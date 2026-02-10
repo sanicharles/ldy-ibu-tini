@@ -12,9 +12,9 @@ export type ServiceType =
   | 'Hordeng 1 Set';
 
 export const SERVICE_PRICES: Record<ServiceType, number> = {
-  'Cuci Setrika': 5000,
-  'Cuci Lipat': 4000,
-  'Setrika': 4000,
+  'Cuci Setrika': 6000,
+  'Cuci Lipat': 5000,
+  'Setrika': 5000,
   'Express': 10000,
   'Handuk': 2000,
   'Sprei 1 Set': 3000,
