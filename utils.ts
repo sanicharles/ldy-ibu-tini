@@ -36,7 +36,6 @@ export const playNotificationSound = () => {
     osc.stop(start + duration);
   };
 
-  // Play a pleasant double-ping
   playTone(880, audioCtx.currentTime, 0.5);
   playTone(1108.73, audioCtx.currentTime + 0.1, 0.5);
 };
@@ -58,5 +57,58 @@ export const showPushNotification = async (title: string, body: string) => {
     if (permission === "granted") {
       new Notification(title, { body, icon: 'https://cdn-icons-png.flaticon.com/512/2972/2972185.png' });
     }
+  }
+};
+
+/**
+ * CLOUD SYNC SERVICE (JSONBLOB)
+ * Allows for a free, keyless online database simulation.
+ */
+const CLOUD_API_URL = 'https://jsonblob.com/api/jsonBlob';
+
+export const createCloudBin = async (data: any): Promise<string | null> => {
+  try {
+    const response = await fetch(CLOUD_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    const location = response.headers.get('Location');
+    if (location) {
+      const parts = location.split('/');
+      return parts[parts.length - 1];
+    }
+    return null;
+  } catch (err) {
+    console.error("Cloud creation failed", err);
+    return null;
+  }
+};
+
+export const updateCloudBin = async (binId: string, data: any): Promise<boolean> => {
+  try {
+    const response = await fetch(`${CLOUD_API_URL}/${binId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    return response.ok;
+  } catch (err) {
+    console.error("Cloud update failed", err);
+    return false;
+  }
+};
+
+export const getCloudBin = async (binId: string): Promise<any | null> => {
+  try {
+    const response = await fetch(`${CLOUD_API_URL}/${binId}`, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' }
+    });
+    if (response.ok) return await response.json();
+    return null;
+  } catch (err) {
+    console.error("Cloud fetch failed", err);
+    return null;
   }
 };

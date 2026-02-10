@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   LayoutDashboard, 
   PlusCircle, 
@@ -37,7 +37,12 @@ import {
   Download,
   MapPin,
   Info,
-  Truck
+  Truck,
+  AlertCircle,
+  Cloud,
+  CloudOff,
+  RefreshCw,
+  Database
 } from 'lucide-react';
 import { 
   LineChart, 
@@ -62,7 +67,10 @@ import {
   generateNotaNumber, 
   playNotificationSound, 
   sendWhatsAppMessage,
-  showPushNotification
+  showPushNotification,
+  getCloudBin,
+  updateCloudBin,
+  createCloudBin
 } from './utils';
 
 // Admin PIN as requested
@@ -107,13 +115,42 @@ const Toast = ({ message, type, onClose }: { message: string, type: 'success' | 
   </div>
 );
 
+// --- Confirmation Dialog ---
+
+const ConfirmationDialog = ({ isOpen, title, message, onConfirm, onCancel }: { isOpen: boolean, title: string, message: string, onConfirm: () => void, onCancel: () => void }) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-blue-900/40 backdrop-blur-sm animate-fade-in" onClick={onCancel}></div>
+      <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl relative overflow-hidden animate-zoom-in p-8 text-center">
+        <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-6 text-blue-600">
+          <AlertCircle className="w-8 h-8" />
+        </div>
+        <h3 className="text-xl font-black text-gray-800 mb-2">{title}</h3>
+        <p className="text-gray-500 font-medium mb-8 leading-relaxed">{message}</p>
+        <div className="grid grid-cols-2 gap-3">
+          <button onClick={onCancel} className="py-3 rounded-2xl font-bold bg-gray-50 text-gray-500 hover:bg-gray-100 transition-colors">Batal</button>
+          <button onClick={onConfirm} className="py-3 rounded-2xl font-bold bg-blue-600 text-white hover:bg-blue-700 transition-colors">Ya, Lanjutkan</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // --- Modal Component ---
 
 const OrderModal = ({ order, onClose, isAdmin, onUpdateStatus }: { order: Order | null, onClose: () => void, isAdmin: boolean, onUpdateStatus: (id: string, s: OrderStatus) => void }) => {
+  const [confirmData, setConfirmData] = useState<{ status: OrderStatus, title: string, msg: string } | null>(null);
+
   if (!order) return null;
 
   const generatePDF = () => {
-    const { jsPDF } = (window as any).jspdf;
+    const jspdfLib = (window as any).jspdf;
+    if (!jspdfLib) {
+        alert("Library PDF belum siap. Silakan refresh halaman.");
+        return;
+    }
+    const { jsPDF } = jspdfLib;
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [80, 160] });
     const margin = 5;
     const pageWidth = 80;
@@ -146,10 +183,14 @@ const OrderModal = ({ order, onClose, isAdmin, onUpdateStatus }: { order: Order 
     doc.save(`Nota_${order.notaNumber}.pdf`);
   };
 
-  const handleFinish = () => {
-    const msg = `Halo Kak ${order.customerName} 👋 Laundry Anda sudah SELESAI ✅ Total: ${formatIDR(order.totalPrice)}. Silakan ambil ke outlet Laundry Ibu Tini ya!`;
-    sendWhatsAppMessage(order.customerPhone, msg);
-    onUpdateStatus(order.id, 'Selesai');
+  const executeStatusUpdate = () => {
+    if (!confirmData) return;
+    if (confirmData.status === 'Selesai') {
+        const msg = `Halo Kak ${order.customerName} 👋 Laundry Anda sudah SELESAI ✅ Total: ${formatIDR(order.totalPrice)}. Silakan ambil ke outlet Laundry Ibu Tini ya!`;
+        sendWhatsAppMessage(order.customerPhone, msg);
+    }
+    onUpdateStatus(order.id, confirmData.status);
+    setConfirmData(null);
   };
 
   const handleContact = () => {
@@ -160,99 +201,117 @@ const OrderModal = ({ order, onClose, isAdmin, onUpdateStatus }: { order: Order 
   const statusColors: any = { 'Baru': 'bg-blue-600', 'Proses': 'bg-orange-500', 'Selesai': 'bg-green-600' };
 
   return (
-    <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-blue-900/40 backdrop-blur-sm" onClick={onClose}></div>
-      <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl relative overflow-hidden animate-zoom-in">
-        <div className={`h-2 ${statusColors[order.status]}`}></div>
-        <div className="p-6 md:p-8 overflow-y-auto max-h-[90vh]">
-          <div className="flex justify-between items-start mb-8">
-            <div>
-              <p className="text-[10px] font-black text-blue-500/50 uppercase tracking-[0.2em] mb-1">{order.notaNumber}</p>
-              <h3 className="text-2xl font-black text-gray-800 tracking-tight">{order.customerName}</h3>
-            </div>
-            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-              <X className="w-6 h-6 text-gray-400" />
-            </button>
-          </div>
+    <>
+      <ConfirmationDialog 
+        isOpen={!!confirmData}
+        title={confirmData?.title || ''}
+        message={confirmData?.msg || ''}
+        onConfirm={executeStatusUpdate}
+        onCancel={() => setConfirmData(null)}
+      />
 
-          <div className="grid grid-cols-2 gap-6 mb-8">
-            <div className="space-y-1">
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1"><Shirt className="w-3 h-3" /> Layanan</p>
-              <p className="font-bold text-gray-800">{order.serviceType}</p>
+      <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-blue-900/40 backdrop-blur-sm animate-fade-in" onClick={onClose}></div>
+        <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl relative overflow-hidden animate-zoom-in">
+          <div className={`h-2 ${statusColors[order.status]}`}></div>
+          <div className="p-6 md:p-8 overflow-y-auto max-h-[90vh]">
+            <div className="flex justify-between items-start mb-8">
+              <div>
+                <p className="text-[10px] font-black text-blue-500/50 uppercase tracking-[0.2em] mb-1">{order.notaNumber}</p>
+                <h3 className="text-2xl font-black text-gray-800 tracking-tight">{order.customerName}</h3>
+              </div>
+              <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                <X className="w-6 h-6 text-gray-400" />
+              </button>
             </div>
-            <div className="space-y-1">
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1"><Package className="w-3 h-3" /> Berat/Qty</p>
-              <p className="font-bold text-gray-800">{order.weight} Unit/Kg</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1"><Clock className="w-3 h-3" /> Tgl Masuk</p>
-              <p className="font-bold text-gray-800">{new Date(order.createdAt).toLocaleDateString('id-ID')}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Status</p>
-              <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black text-white uppercase ${statusColors[order.status]}`}>{order.status}</span>
-            </div>
-          </div>
 
-          <div className="space-y-4 mb-8">
-            <div className="flex gap-3">
-              <div className="p-2 bg-blue-50 rounded-xl"><Phone className="w-4 h-4 text-blue-600" /></div>
-              <div>
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Kontak</p>
-                <p className="font-bold text-gray-800">{order.customerPhone}</p>
+            <div className="grid grid-cols-2 gap-6 mb-8">
+              <div className="space-y-1">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1"><Shirt className="w-3 h-3" /> Layanan</p>
+                <p className="font-bold text-gray-800">{order.serviceType}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1"><Package className="w-3 h-3" /> Berat/Qty</p>
+                <p className="font-bold text-gray-800">{order.weight} Unit/Kg</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1"><Clock className="w-3 h-3" /> Tgl Masuk</p>
+                <p className="font-bold text-gray-800">{new Date(order.createdAt).toLocaleDateString('id-ID')}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Status</p>
+                <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black text-white uppercase ${statusColors[order.status]}`}>{order.status}</span>
               </div>
             </div>
-            <div className="flex gap-3">
-              <div className="p-2 bg-orange-50 rounded-xl"><MapPin className="w-4 h-4 text-orange-600" /></div>
-              <div>
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Alamat</p>
-                <p className="font-medium text-gray-600 text-sm leading-relaxed">{order.customerAddress}</p>
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <div className="p-2 bg-green-50 rounded-xl"><Truck className="w-4 h-4 text-green-600" /></div>
-              <div>
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Pengiriman</p>
-                <p className="font-bold text-gray-800">{order.deliveryMethod}</p>
-              </div>
-            </div>
-            {order.specialRequest && (
+
+            <div className="space-y-4 mb-8">
               <div className="flex gap-3">
-                <div className="p-2 bg-purple-50 rounded-xl"><Info className="w-4 h-4 text-purple-600" /></div>
+                <div className="p-2 bg-blue-50 rounded-xl"><Phone className="w-4 h-4 text-blue-600" /></div>
                 <div>
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Catatan Khusus</p>
-                  <p className="font-medium text-gray-600 text-sm italic">"{order.specialRequest}"</p>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Kontak</p>
+                  <p className="font-bold text-gray-800">{order.customerPhone}</p>
                 </div>
               </div>
-            )}
-          </div>
-
-          <div className="bg-gray-50 rounded-2xl p-4 flex items-center justify-between mb-8">
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Pembayaran</p>
-            <p className="text-2xl font-black text-blue-700">{formatIDR(order.totalPrice)}</p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <button onClick={generatePDF} className="flex items-center justify-center gap-2 bg-white border border-gray-200 text-gray-700 py-3 rounded-2xl font-bold transition-all hover:bg-gray-50">
-              <Printer className="w-4 h-4" /> CETAK NOTA
-            </button>
-            <button onClick={handleContact} className="flex items-center justify-center gap-2 bg-green-50 text-green-700 py-3 rounded-2xl font-bold transition-all hover:bg-green-100">
-              <MessageCircle className="w-4 h-4" /> WHATSAPP
-            </button>
-            {isAdmin && (
-              <div className="col-span-2 mt-2">
-                {order.status === 'Baru' && (
-                  <Button onClick={() => onUpdateStatus(order.id, 'Proses')} className="w-full py-4 bg-orange-500 hover:bg-orange-600">MULAI PROSES PENGERJAAN</Button>
-                )}
-                {order.status === 'Proses' && (
-                  <Button onClick={handleFinish} variant="success" className="w-full py-4">SELESAIKAN & KIRIM NOTIFIKASI</Button>
-                )}
+              <div className="flex gap-3">
+                <div className="p-2 bg-orange-50 rounded-xl"><MapPin className="w-4 h-4 text-orange-600" /></div>
+                <div>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Alamat</p>
+                  <p className="font-medium text-gray-600 text-sm leading-relaxed">{order.customerAddress}</p>
+                </div>
               </div>
-            )}
+              <div className="flex gap-3">
+                <div className="p-2 bg-green-50 rounded-xl"><Truck className="w-4 h-4 text-green-600" /></div>
+                <div>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Pengiriman</p>
+                  <p className="font-bold text-gray-800">{order.deliveryMethod}</p>
+                </div>
+              </div>
+              {order.specialRequest && (
+                <div className="flex gap-3">
+                  <div className="p-2 bg-purple-50 rounded-xl"><Info className="w-4 h-4 text-purple-600" /></div>
+                  <div>
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Catatan Khusus</p>
+                    <p className="font-medium text-gray-600 text-sm italic">"{order.specialRequest}"</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="bg-gray-50 rounded-2xl p-4 flex items-center justify-between mb-8">
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Pembayaran</p>
+              <p className="text-2xl font-black text-blue-700">{formatIDR(order.totalPrice)}</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <button onClick={generatePDF} className="flex items-center justify-center gap-2 bg-white border border-gray-200 text-gray-700 py-3 rounded-2xl font-bold transition-all hover:bg-gray-50">
+                <Printer className="w-4 h-4" /> CETAK NOTA
+              </button>
+              <button onClick={handleContact} className="flex items-center justify-center gap-2 bg-green-50 text-green-700 py-3 rounded-2xl font-bold transition-all hover:bg-green-100">
+                <MessageCircle className="w-4 h-4" /> WHATSAPP
+              </button>
+              {isAdmin && (
+                <div className="col-span-2 mt-2">
+                  {order.status === 'Baru' && (
+                    <Button onClick={() => setConfirmData({ 
+                        status: 'Proses', 
+                        title: 'Mulai Pengerjaan?', 
+                        msg: `Ubah status ${order.customerName} menjadi dalam proses?` 
+                    })} className="w-full py-4 bg-orange-500 hover:bg-orange-600">MULAI PROSES PENGERJAAN</Button>
+                  )}
+                  {order.status === 'Proses' && (
+                    <Button onClick={() => setConfirmData({ 
+                        status: 'Selesai', 
+                        title: 'Selesaikan Order?', 
+                        msg: `Ubah status ${order.customerName} menjadi selesai dan kirim notifikasi WhatsApp?` 
+                    })} variant="success" className="w-full py-4">SELESAIKAN & KIRIM NOTIFIKASI</Button>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 
@@ -274,65 +333,84 @@ export default function App() {
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'info' } | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   
+  // Cloud State
+  const [cloudBinId, setCloudBinId] = useState<string | null>(null);
+  const [cloudStatus, setCloudStatus] = useState<'idle' | 'syncing' | 'error' | 'connected'>('idle');
+
   // Auth state for Admin
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [adminPinInput, setAdminPinInput] = useState('');
   const [adminPinError, setAdminPinError] = useState(false);
 
-  // Persistence and Initial Loading
+  // --- Initial Loading ---
   useEffect(() => {
-    const savedOrders = localStorage.getItem('tini_orders');
-    if (savedOrders) setOrders(JSON.parse(savedOrders));
-    
-    const savedPhone = localStorage.getItem('tini_customer_phone');
-    if (savedPhone) setCustomerPhone(savedPhone);
+    const initialize = async () => {
+      // 1. Local Storage fallback
+      const savedOrders = localStorage.getItem('tini_orders');
+      if (savedOrders) setOrders(JSON.parse(savedOrders));
 
-    const savedRole = localStorage.getItem('tini_role');
-    if (savedRole) {
-      setRole(savedRole as Role);
-      setActiveTab(savedRole === 'ADMIN' ? 'dashboard' : 'add');
-    }
+      const savedPhone = localStorage.getItem('tini_customer_phone');
+      if (savedPhone) setCustomerPhone(savedPhone);
 
-    if ("Notification" in window && Notification.permission === "default") {
-      Notification.requestPermission();
-    }
-
-    const timer = setTimeout(() => {
-      setShowSplash(false);
-      if (!savedRole) {
-        setShowWelcome(true);
+      const savedRole = localStorage.getItem('tini_role');
+      if (savedRole) {
+        setRole(savedRole as Role);
+        setActiveTab(savedRole === 'ADMIN' ? 'dashboard' : 'add');
       }
-    }, 2000);
-    return () => clearTimeout(timer);
+
+      // 2. Cloud DB Connection
+      let binId = localStorage.getItem('tini_cloud_bin_id');
+      setCloudStatus('syncing');
+      
+      if (binId) {
+        const cloudData = await getCloudBin(binId);
+        if (cloudData && Array.isArray(cloudData)) {
+          setOrders(cloudData);
+          setCloudStatus('connected');
+        } else {
+          setCloudStatus('error');
+        }
+        setCloudBinId(binId);
+      } else {
+        // Initial setup for cloud
+        const newBinId = await createCloudBin(savedOrders ? JSON.parse(savedOrders) : []);
+        if (newBinId) {
+          localStorage.setItem('tini_cloud_bin_id', newBinId);
+          setCloudBinId(newBinId);
+          setCloudStatus('connected');
+        } else {
+          setCloudStatus('error');
+        }
+      }
+
+      const timer = setTimeout(() => {
+        setShowSplash(false);
+        if (!savedRole) setShowWelcome(true);
+      }, 2000);
+      return () => clearTimeout(timer);
+    };
+
+    initialize();
   }, []);
 
-  // Save orders to localStorage
+  // --- Automatic Cloud Push ---
+  const syncToCloud = useCallback(async (data: Order[]) => {
+    if (!cloudBinId) return;
+    setCloudStatus('syncing');
+    const success = await updateCloudBin(cloudBinId, data);
+    setCloudStatus(success ? 'connected' : 'error');
+  }, [cloudBinId]);
+
   useEffect(() => {
     localStorage.setItem('tini_orders', JSON.stringify(orders));
-  }, [orders]);
-
-  /**
-   * REAL-TIME SYNC & NOTIFICATION LOGIC
-   */
-  useEffect(() => {
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'tini_orders' && e.newValue) {
-        const updatedOrders: Order[] = JSON.parse(e.newValue);
-        if (updatedOrders.length > orders.length) {
-          const latestOrder = updatedOrders[0];
-          if (role === 'ADMIN') {
-            playNotificationSound();
-            showPushNotification("Order Baru Masuk! 🧺", `${latestOrder.customerName} memesan layanan ${latestOrder.serviceType}.`);
-            setToast({ message: `Order baru dari ${latestOrder.customerName} diterima secara real-time!`, type: 'info' });
-            setTimeout(() => setToast(null), 6000);
-          }
-        }
-        setOrders(updatedOrders);
-      }
-    };
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, [orders, role]);
+    
+    // Debounce cloud sync to avoid hitting API rate limits too often
+    const timeout = setTimeout(() => {
+      syncToCloud(orders);
+    }, 3000);
+    
+    return () => clearTimeout(timeout);
+  }, [orders, syncToCloud]);
 
   const handleAdminLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -370,7 +448,7 @@ export default function App() {
     setOrders(prev => [newOrder, ...prev]);
     if (notify) {
       playNotificationSound();
-      setToast({ message: `Order ${newOrder.notaNumber} berhasil didaftarkan!`, type: 'success' });
+      setToast({ message: `Order ${newOrder.notaNumber} berhasil didaftarkan ke Database Online!`, type: 'success' });
       setTimeout(() => setToast(null), 5000);
     }
   };
@@ -459,7 +537,7 @@ export default function App() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `Laundry_Data.csv`);
+    link.setAttribute("download", `Laundry_Data_Ibu_Tini.csv`);
     link.click();
   };
 
@@ -476,7 +554,6 @@ export default function App() {
   if (showWelcome) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-gradient-to-br from-blue-50/50 to-white">
-        {/* Decorative background shapes */}
         <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-100/40 rounded-full blur-[120px]"></div>
         <div className="absolute bottom-[-10%] left-[-10%] w-[30%] h-[30%] bg-blue-100/30 rounded-full blur-[100px]"></div>
 
@@ -616,7 +693,6 @@ export default function App() {
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       <OrderModal order={selectedOrder} onClose={() => setSelectedOrder(null)} isAdmin={role === 'ADMIN'} onUpdateStatus={updateOrderStatus} />
       
-      {/* Sidebar */}
       <div className="hidden md:fixed md:inset-y-0 md:flex md:w-64 md:flex-col">
         <div className="flex flex-1 flex-col bg-blue-700 p-8 text-white">
           <div className="flex items-center gap-3 mb-12"><WashingMachine className="w-8 h-8" /><span className="font-black text-xl tracking-tighter">IBU TINI</span></div>
@@ -642,6 +718,15 @@ export default function App() {
         <header className="sticky top-0 z-40 bg-white/60 backdrop-blur-xl border-b p-6 flex items-center justify-between">
           <h2 className="text-2xl font-black text-gray-800 tracking-tight">{role === 'ADMIN' ? 'Control Panel Admin' : 'Laundry Anda'}</h2>
           <div className="flex items-center gap-4">
+            {/* Cloud Status Indicator */}
+            <div className="flex items-center gap-2 px-3 py-1 bg-white/50 border rounded-full text-[10px] font-black uppercase tracking-widest text-gray-500">
+              {cloudStatus === 'syncing' && <RefreshCw className="w-3 h-3 animate-spin text-blue-600" />}
+              {cloudStatus === 'connected' && <Cloud className="w-3 h-3 text-green-600 pulse" />}
+              {cloudStatus === 'error' && <CloudOff className="w-3 h-3 text-red-600" />}
+              {cloudStatus === 'idle' && <Database className="w-3 h-3" />}
+              <span className="hidden sm:inline">{cloudStatus === 'connected' ? 'Database Online' : cloudStatus}</span>
+            </div>
+            
             <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-3 bg-white shadow-sm border rounded-xl">{isDarkMode ? <Sun className="text-orange-500" /> : <Moon className="text-blue-600" />}</button>
             <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-black">{role === 'ADMIN' ? 'A' : 'P'}</div>
           </div>
@@ -656,6 +741,22 @@ export default function App() {
                 <StatCard label="Dalam Proses" value={stats.process} icon={Clock} color="orange" />
                 <StatCard label="Total Order" value={orders.length} icon={Package} color="purple" />
               </div>
+
+              {/* Database Connection Info Card */}
+              <Card className="bg-gradient-to-r from-blue-600 to-blue-800 text-white border-none">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-bold flex items-center gap-2"><Database className="w-5 h-5" /> Database Cloud Aktif</h3>
+                    <p className="text-xs opacity-70 mt-1">Data anda tersinkronisasi otomatis secara online.</p>
+                    <div className="mt-4 flex items-center gap-2">
+                        <span className="text-[10px] bg-white/20 px-2 py-1 rounded font-mono">BIN ID: {cloudBinId || 'Connecting...'}</span>
+                        <button onClick={() => syncToCloud(orders)} className="text-[10px] bg-white text-blue-600 px-3 py-1 rounded font-bold hover:bg-gray-100 transition-colors">SYNC NOW</button>
+                    </div>
+                  </div>
+                  <Cloud className="w-16 h-16 opacity-20" />
+                </div>
+              </Card>
+
               <Card className="h-[400px]">
                 <h3 className="text-xl font-bold mb-6">Laporan Pendapatan Mingguan</h3>
                 <ResponsiveContainer width="100%" height="80%">
@@ -732,7 +833,6 @@ export default function App() {
         </main>
       </div>
 
-      {/* Mobile Footer */}
       <div className="md:hidden fixed bottom-6 left-6 right-6 h-16 bg-white/80 backdrop-blur-2xl rounded-3xl border flex justify-around items-center px-4 shadow-2xl z-50">
         <button onClick={() => setActiveTab('dashboard')} className={`p-3 rounded-2xl ${activeTab === 'dashboard' ? 'text-blue-600 bg-blue-50' : 'text-gray-400'}`}><LayoutDashboard /></button>
         <button onClick={() => setActiveTab('orders')} className={`p-3 rounded-2xl ${activeTab === 'orders' ? 'text-blue-600 bg-blue-50' : 'text-gray-400'}`}><ClipboardList /></button>
@@ -776,7 +876,7 @@ function OrderForm({ role, prefilledPhone, onAdd }: any) {
     deliveryMethod: 'Ambil Sendiri' as any
   });
 
-  const total = formData.weight * SERVICE_PRICES[formData.serviceType];
+  const total = formData.weight * (SERVICE_PRICES[formData.serviceType] || 0);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -801,16 +901,16 @@ function OrderForm({ role, prefilledPhone, onAdd }: any) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-1">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Nama Lengkap</label>
-              <input required className="w-full px-5 py-4 border border-blue-50 bg-gray-50/50 rounded-2xl outline-none" value={formData.customerName} onChange={(e) => setFormData({...formData, customerName: e.target.value})} />
+              <input required className="w-full px-5 py-4 border border-blue-50 bg-gray-50/50 rounded-2xl outline-none" value={formData.customerName} onChange={(e) => setFormData({...formData, customerName: e.target.value})} placeholder="Contoh: Budi Santoso" />
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">No WhatsApp</label>
-              <input required className="w-full px-5 py-4 border border-blue-50 bg-gray-50/50 rounded-2xl outline-none" value={formData.customerPhone} onChange={(e) => setFormData({...formData, customerPhone: e.target.value})} />
+              <input required className="w-full px-5 py-4 border border-blue-100 rounded-2xl outline-none" value={formData.customerPhone} onChange={(e) => setFormData({...formData, customerPhone: e.target.value})} placeholder="Contoh: 081234567890" />
             </div>
           </div>
           <div className="space-y-1">
             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Alamat Lengkap</label>
-            <textarea required rows={2} className="w-full px-5 py-4 border border-blue-50 bg-gray-50/50 rounded-2xl outline-none" value={formData.customerAddress} onChange={(e) => setFormData({...formData, customerAddress: e.target.value})} />
+            <textarea required rows={2} className="w-full px-5 py-4 border border-blue-100 rounded-2xl outline-none" value={formData.customerAddress} onChange={(e) => setFormData({...formData, customerAddress: e.target.value})} placeholder="Masukkan alamat untuk antar/jemput" />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-1">
@@ -820,10 +920,11 @@ function OrderForm({ role, prefilledPhone, onAdd }: any) {
               </select>
             </div>
             <div className="space-y-1">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Berat / Unit</label>
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Berat (Kg) / Unit</label>
               <input required type="number" min="0" step="0.1" className="w-full px-5 py-4 border border-blue-50 bg-gray-50/50 rounded-2xl outline-none font-black text-xl" value={formData.weight} onChange={(e) => setFormData({...formData, weight: parseFloat(e.target.value) || 0})} />
             </div>
           </div>
+          
           <div className="space-y-1">
             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Metode Pengiriman</label>
             <div className="flex gap-4">
@@ -831,6 +932,12 @@ function OrderForm({ role, prefilledPhone, onAdd }: any) {
               <button type="button" onClick={() => setFormData({...formData, deliveryMethod: 'Antar/Jemput'})} className={`flex-1 py-4 rounded-2xl border-2 font-bold transition-all ${formData.deliveryMethod === 'Antar/Jemput' ? 'border-blue-600 bg-blue-50 text-blue-600' : 'border-gray-100 text-gray-400'}`}>Antar/Jemput</button>
             </div>
           </div>
+
+          <div className="space-y-1">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Catatan Khusus (Optional)</label>
+            <textarea rows={1} className="w-full px-5 py-4 border border-blue-50 bg-gray-50/50 rounded-2xl outline-none" value={formData.specialRequest} onChange={(e) => setFormData({...formData, specialRequest: e.target.value})} placeholder="Contoh: Jangan campur baju putih, setrika licin." />
+          </div>
+
           <div className="p-6 bg-blue-600 rounded-3xl flex flex-col md:flex-row items-center justify-between text-white gap-6">
             <div><p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80 mb-1">Total Tagihan</p><p className="text-4xl font-black">{formatIDR(total)}</p></div>
             <Button type="submit" disabled={total <= 0} className="bg-white text-blue-600 hover:bg-gray-50 w-full md:w-auto px-10 py-4">DAFTARKAN SEKARANG</Button>
