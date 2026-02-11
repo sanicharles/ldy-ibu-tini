@@ -48,7 +48,8 @@ import {
   Star,
   RefreshCcw,
   SearchCheck,
-  Activity
+  Activity,
+  ArrowUpRight
 } from 'lucide-react';
 import { 
   LineChart, 
@@ -446,7 +447,7 @@ export default function App() {
     const savedRole = localStorage.getItem('tini_role');
     if (savedRole) {
       setRole(savedRole as Role);
-      setActiveTab(savedRole === 'ADMIN' ? 'dashboard' : 'orders'); // Default to tracking for customer
+      setActiveTab(savedRole === 'ADMIN' ? 'dashboard' : 'orders');
     }
 
     setTimeout(() => {
@@ -476,7 +477,7 @@ export default function App() {
     } else {
       setRole(selectedRole);
       localStorage.setItem('tini_role', selectedRole);
-      setActiveTab('orders'); // Langsung ke pelacakan
+      setActiveTab('orders');
     }
   };
 
@@ -497,7 +498,7 @@ export default function App() {
     const success = await upsertOrderToSupabase(newOrder);
     if (success) {
       setToast({ message: `Order ${newOrder.notaNumber} Berhasil Terdaftar!`, type: 'success' });
-      setActiveTab('orders'); // Setelah order berhasil, pindah ke pelacakan
+      setActiveTab('orders');
     } else {
       setToast({ message: "Gagal simpan ke Cloud, tersimpan lokal.", type: 'info' });
     }
@@ -634,13 +635,6 @@ export default function App() {
                 >
                   Mulai Sekarang <ArrowRight className="w-6 h-6" />
                 </button>
-                <a 
-                  href="https://wa.me/6285695014434"
-                  target="_blank"
-                  className="px-10 py-5 bg-white border-2 border-gray-100 hover:border-blue-600 text-gray-700 hover:text-blue-600 rounded-[2rem] font-bold text-xl transition-all flex items-center justify-center gap-3"
-                >
-                  <MessageCircle className="w-6 h-6 text-green-500" /> WhatsApp
-                </a>
               </div>
 
               <div className="grid grid-cols-3 gap-4 pt-10 border-t border-gray-100">
@@ -784,7 +778,7 @@ export default function App() {
               </>
             ) : (
               <>
-                <SidebarLink icon={Activity} label="Status Order" active={activeTab === 'orders'} onClick={() => setActiveTab('orders')} />
+                <SidebarLink icon={Activity} label="Pelacakan" active={activeTab === 'orders'} onClick={() => setActiveTab('orders')} />
                 <SidebarLink icon={PlusCircle} label="Buat Order" active={activeTab === 'add'} onClick={() => setActiveTab('add')} />
               </>
             )}
@@ -792,7 +786,7 @@ export default function App() {
           <div className="mt-auto space-y-4">
             {role === 'CUSTOMER' && (
               <div className="bg-blue-600/50 p-4 rounded-2xl border border-blue-500/30">
-                <p className="text-[10px] font-black text-blue-200 uppercase mb-2">Login Sebagai</p>
+                <p className="text-[10px] font-black text-blue-200 uppercase mb-2">Login Pelanggan</p>
                 <p className="font-bold truncate text-sm">{customerPhone}</p>
               </div>
             )}
@@ -805,17 +799,17 @@ export default function App() {
         <header className="sticky top-0 z-40 bg-white/60 backdrop-blur-xl border-b p-6 flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-black text-gray-800 tracking-tight">
-              {role === 'ADMIN' ? 'Control Panel Admin' : 'Order Tracking'}
+              {role === 'ADMIN' ? 'Control Panel Admin' : 'Dashboard Pelanggan'}
             </h2>
-            {role === 'CUSTOMER' && <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mt-1">Real-time status tracking active</p>}
+            {role === 'CUSTOMER' && <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mt-1 flex items-center gap-2"><ZapIcon className="w-3 h-3 pulse" /> Live Tracking Status Aktif</p>}
           </div>
           <div className="flex items-center gap-4">
             <div className={`flex items-center gap-2 px-3 py-1 border rounded-full text-[10px] font-black uppercase tracking-widest ${dbStatus === 'live' ? 'bg-green-50 border-green-200 text-green-600' : 'bg-red-50 border-red-200 text-red-600'}`}>
               <Zap className={`w-3 h-3 ${dbStatus === 'live' ? 'pulse' : ''}`} />
               <span className="hidden sm:inline">{dbStatus === 'live' ? 'Live' : 'Offline'}</span>
             </div>
-            <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-3 bg-white shadow-sm border rounded-xl">{isDarkMode ? <Sun className="text-orange-500" /> : <Moon className="text-blue-600" />}</button>
-            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-black">{role === 'ADMIN' ? 'A' : 'P'}</div>
+            <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-3 bg-white shadow-sm border rounded-xl hover:bg-gray-50 transition-colors">{isDarkMode ? <Sun className="text-orange-500" /> : <Moon className="text-blue-600" />}</button>
+            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-black shadow-lg shadow-blue-100">{role === 'ADMIN' ? 'A' : 'P'}</div>
           </div>
         </header>
 
@@ -848,101 +842,159 @@ export default function App() {
           {activeTab === 'add' && <OrderForm role={role} onAdd={addOrder} prefilledPhone={customerPhone} />}
 
           {activeTab === 'orders' && (
-            <div className="space-y-8">
+            <div className="space-y-10 animate-fade-in">
               {role === 'CUSTOMER' && customerStats && (
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="bg-blue-600 rounded-[2rem] p-6 text-white shadow-xl shadow-blue-100 flex flex-col justify-between">
-                    <p className="text-[10px] font-black uppercase opacity-60">Total Pesanan</p>
-                    <p className="text-4xl font-black">{customerStats.total}</p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="relative group overflow-hidden bg-blue-600 rounded-[2.5rem] p-8 text-white shadow-2xl shadow-blue-100 transition-all hover:-translate-y-1">
+                    <div className="absolute -right-6 -bottom-6 opacity-10 group-hover:scale-110 transition-transform duration-700">
+                       <Package className="w-40 h-40" />
+                    </div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-70 mb-2">Total Riwayat</p>
+                    <div className="flex items-baseline gap-2">
+                       <p className="text-6xl font-black">{customerStats.total}</p>
+                       <span className="text-sm font-bold opacity-60">Pesanan</span>
+                    </div>
                   </div>
-                  <div className="bg-white rounded-[2rem] p-6 border shadow-sm flex flex-col justify-between">
-                    <p className="text-[10px] font-black text-gray-400 uppercase">Sedang Dicuci</p>
-                    <p className="text-4xl font-black text-orange-500">{customerStats.active}</p>
+                  
+                  <div className="relative group overflow-hidden bg-white rounded-[2.5rem] p-8 border border-orange-100 shadow-xl shadow-orange-50/50 transition-all hover:-translate-y-1">
+                    <div className="absolute -right-6 -bottom-6 opacity-5 group-hover:scale-110 transition-transform duration-700">
+                       <RefreshCcw className="w-40 h-40 text-orange-500" />
+                    </div>
+                    <p className="text-[10px] font-black text-orange-400 uppercase tracking-[0.2em] mb-2">Aktif Diproses</p>
+                    <div className="flex items-baseline gap-2">
+                       <p className="text-6xl font-black text-orange-500">{customerStats.active}</p>
+                       <span className="text-sm font-bold text-gray-400">Sedang Dicuci</span>
+                    </div>
                   </div>
-                  <div className="bg-green-50 rounded-[2rem] p-6 border border-green-100 flex flex-col justify-between">
-                    <p className="text-[10px] font-black text-green-600 uppercase">Selesai</p>
-                    <p className="text-4xl font-black text-green-700">{customerStats.done}</p>
+
+                  <div className="relative group overflow-hidden bg-white rounded-[2.5rem] p-8 border border-green-100 shadow-xl shadow-green-50/50 transition-all hover:-translate-y-1">
+                    <div className="absolute -right-6 -bottom-6 opacity-5 group-hover:scale-110 transition-transform duration-700">
+                       <CheckCircle2 className="w-40 h-40 text-green-500" />
+                    </div>
+                    <p className="text-[10px] font-black text-green-600 uppercase tracking-[0.2em] mb-2">Selesai ✅</p>
+                    <div className="flex items-baseline gap-2">
+                       <p className="text-6xl font-black text-green-700">{customerStats.done}</p>
+                       <span className="text-sm font-bold text-gray-400">Siap Ambil</span>
+                    </div>
                   </div>
                 </div>
               )}
 
-              <div className="flex flex-col xl:flex-row gap-4 justify-between items-center">
+              <div className="flex flex-col xl:flex-row gap-6 justify-between items-center">
                 <div className="flex items-center gap-4 flex-1 w-full">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-                    <input type="text" placeholder={role === 'ADMIN' ? "Cari Pelanggan atau No Nota..." : "Cari di daftar pesanan Anda..."} className="w-full pl-12 pr-6 py-4 bg-white border border-gray-100 rounded-2xl outline-none shadow-sm focus:ring-2 focus:ring-blue-100 transition-all" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                  <div className="relative flex-1 group">
+                    <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5 group-focus-within:text-blue-500 transition-colors" />
+                    <input type="text" placeholder={role === 'ADMIN' ? "Cari Pelanggan atau No Nota..." : "Cari di daftar pesanan Anda..."} className="w-full pl-14 pr-8 py-5 bg-white border border-gray-100 rounded-[2rem] outline-none shadow-md focus:ring-4 focus:ring-blue-100 transition-all text-lg font-medium" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
                   </div>
                   {role === 'CUSTOMER' && (
-                    <button onClick={() => initializeSupabase()} className="p-4 bg-white border rounded-2xl hover:bg-gray-50 text-blue-600 shadow-sm transition-all active:scale-95" title="Refresh Data">
-                      <RefreshCcw className={`w-5 h-5 ${dbStatus === 'syncing' ? 'animate-spin' : ''}`} />
+                    <button onClick={() => initializeSupabase()} className="p-5 bg-blue-600 rounded-[1.5rem] hover:bg-blue-700 text-white shadow-xl shadow-blue-200 transition-all active:scale-95 group" title="Refresh Data">
+                      <RefreshCcw className={`w-6 h-6 ${dbStatus === 'syncing' ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} />
                     </button>
                   )}
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {filteredOrders.map(order => (
-                  <Card key={order.id} className="cursor-pointer hover:scale-[1.02] transition-all border-none bg-white shadow-sm hover:shadow-xl group" onClick={() => setSelectedOrder(order)}>
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <p className="text-[10px] font-black text-gray-300 uppercase mb-1 tracking-widest">{order.notaNumber}</p>
-                        <h4 className="text-xl font-bold text-gray-800">{order.customerName}</h4>
+                  <Card key={order.id} className="cursor-pointer hover:scale-[1.02] transition-all border-none bg-white/70 backdrop-blur-xl shadow-xl hover:shadow-2xl group relative overflow-hidden flex flex-col min-h-[400px]" onClick={() => setSelectedOrder(order)}>
+                    {/* Visual Status Indicator Top Bar */}
+                    <div className={`absolute top-0 left-0 right-0 h-1.5 ${order.status === 'Baru' ? 'bg-blue-500' : order.status === 'Proses' ? 'bg-orange-500' : 'bg-green-500'}`}></div>
+                    
+                    <div className="flex justify-between items-start mb-6">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{order.notaNumber}</p>
+                           {order.status === 'Proses' && <span className="w-2 h-2 bg-orange-400 rounded-full pulse"></span>}
+                        </div>
+                        <h4 className="text-2xl font-black text-gray-900 leading-tight">{order.customerName}</h4>
                       </div>
-                      <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black text-white uppercase ${order.status === 'Baru' ? 'bg-blue-600' : order.status === 'Proses' ? 'bg-orange-500' : 'bg-green-600'}`}>{order.status}</span>
+                      <div className={`px-3 py-1.5 rounded-xl text-[10px] font-black text-white uppercase shadow-lg ${order.status === 'Baru' ? 'bg-blue-600 shadow-blue-100' : order.status === 'Proses' ? 'bg-orange-500 shadow-orange-100' : 'bg-green-600 shadow-green-100'}`}>
+                        {order.status}
+                      </div>
                     </div>
                     
-                    {/* Customer-Specific Progress Stepper */}
-                    {role === 'CUSTOMER' && (
-                      <div className="mb-6 pt-2">
-                        <div className="flex justify-between items-center relative">
-                          <div className="absolute top-1/2 -translate-y-1/2 left-0 right-0 h-0.5 bg-gray-100 z-0"></div>
-                          <div className={`absolute top-1/2 -translate-y-1/2 left-0 h-0.5 bg-blue-500 z-0 transition-all duration-1000`} style={{ width: order.status === 'Baru' ? '0%' : order.status === 'Proses' ? '50%' : '100%' }}></div>
-                          
-                          <div className={`w-6 h-6 rounded-full z-10 flex items-center justify-center border-2 bg-white ${order.status !== 'Baru' ? 'border-blue-500 text-blue-500' : 'border-blue-500 bg-blue-500 text-white'}`}>
-                            {order.status === 'Baru' ? <div className="w-2 h-2 bg-white rounded-full"></div> : <CheckCircle2 className="w-3 h-3" />}
+                    {/* CUSTOMER STEPPER OPTIMIZED */}
+                    <div className="mb-8 p-4 bg-gray-50/50 rounded-3xl border border-gray-100/50">
+                      <div className="flex justify-between items-center relative px-2">
+                        {/* Track Background */}
+                        <div className="absolute top-1/2 -translate-y-1/2 left-4 right-4 h-1 bg-gray-200 rounded-full z-0"></div>
+                        {/* Active Track */}
+                        <div className={`absolute top-1/2 -translate-y-1/2 left-4 h-1 bg-blue-500 rounded-full z-0 transition-all duration-1000 ease-in-out`} style={{ width: order.status === 'Baru' ? '0%' : order.status === 'Proses' ? '50%' : 'calc(100% - 32px)' }}></div>
+                        
+                        {/* Step 1: Diterima */}
+                        <div className="relative z-10 flex flex-col items-center">
+                          <div className={`w-10 h-10 rounded-2xl flex items-center justify-center border-2 transition-all ${order.status !== 'Baru' ? 'bg-blue-500 border-blue-500 text-white shadow-lg shadow-blue-100' : 'bg-white border-blue-500 text-blue-500'}`}>
+                            {order.status !== 'Baru' ? <CheckCircle2 className="w-5 h-5" /> : <Package className="w-5 h-5" />}
                           </div>
-                          <div className={`w-6 h-6 rounded-full z-10 flex items-center justify-center border-2 bg-white ${order.status === 'Selesai' ? 'border-blue-500 text-blue-500' : order.status === 'Proses' ? 'border-orange-500 bg-orange-500 text-white' : 'border-gray-200 text-gray-300'}`}>
-                            {order.status === 'Proses' ? <RefreshCcw className="w-3 h-3 animate-spin" /> : order.status === 'Selesai' ? <CheckCircle2 className="w-3 h-3" /> : <div className="w-1.5 h-1.5 bg-gray-200 rounded-full"></div>}
-                          </div>
-                          <div className={`w-6 h-6 rounded-full z-10 flex items-center justify-center border-2 bg-white ${order.status === 'Selesai' ? 'border-green-500 bg-green-500 text-white' : 'border-gray-200 text-gray-300'}`}>
-                            {order.status === 'Selesai' ? <CheckCircle2 className="w-3 h-3" /> : <div className="w-1.5 h-1.5 bg-gray-200 rounded-full"></div>}
-                          </div>
+                          <span className="text-[8px] font-black text-blue-500 mt-2 uppercase">Diterima</span>
                         </div>
-                        <div className="flex justify-between mt-2 text-[8px] font-black uppercase text-gray-400">
-                          <span>Diterima</span>
-                          <span>Diproses</span>
-                          <span>Selesai</span>
-                        </div>
-                      </div>
-                    )}
 
-                    <div className="space-y-2 mb-6">
-                      <p className="text-sm font-bold text-gray-500 flex items-center gap-2"><Shirt className="w-4 h-4 text-blue-300" /> {order.serviceType}</p>
-                      <p className="text-sm font-bold text-gray-500 flex items-center gap-2"><Clock className="w-4 h-4 text-blue-300" /> {new Date(order.createdAt).toLocaleDateString('id-ID', {day: 'numeric', month: 'long'})}</p>
+                        {/* Step 2: Diproses */}
+                        <div className="relative z-10 flex flex-col items-center">
+                          <div className={`w-10 h-10 rounded-2xl flex items-center justify-center border-2 transition-all ${order.status === 'Selesai' ? 'bg-blue-500 border-blue-500 text-white shadow-lg shadow-blue-100' : order.status === 'Proses' ? 'bg-orange-500 border-orange-500 text-white shadow-lg shadow-orange-100' : 'bg-white border-gray-200 text-gray-300'}`}>
+                            {order.status === 'Selesai' ? <CheckCircle2 className="w-5 h-5" /> : order.status === 'Proses' ? <RefreshCcw className="w-5 h-5 animate-spin" /> : <WashingMachine className="w-5 h-5" />}
+                          </div>
+                          <span className={`text-[8px] font-black mt-2 uppercase ${order.status === 'Proses' ? 'text-orange-500' : 'text-gray-300'}`}>Diproses</span>
+                        </div>
+
+                        {/* Step 3: Selesai */}
+                        <div className="relative z-10 flex flex-col items-center">
+                          <div className={`w-10 h-10 rounded-2xl flex items-center justify-center border-2 transition-all ${order.status === 'Selesai' ? 'bg-green-500 border-green-500 text-white shadow-lg shadow-green-100' : 'bg-white border-gray-200 text-gray-300'}`}>
+                            {order.status === 'Selesai' ? <Sparkles className="w-5 h-5" /> : <Shirt className="w-5 h-5" />}
+                          </div>
+                          <span className={`text-[8px] font-black mt-2 uppercase ${order.status === 'Selesai' ? 'text-green-600' : 'text-gray-300'}`}>Selesai</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex-1 space-y-4">
+                      <div className="grid grid-cols-2 gap-3">
+                         <div className="p-3 bg-white rounded-2xl border border-gray-50 flex items-center gap-3">
+                            <div className="p-2 bg-blue-50 rounded-xl text-blue-600"><Shirt className="w-4 h-4" /></div>
+                            <div>
+                               <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Layanan</p>
+                               <p className="text-xs font-bold text-gray-700 truncate">{order.serviceType}</p>
+                            </div>
+                         </div>
+                         <div className="p-3 bg-white rounded-2xl border border-gray-50 flex items-center gap-3">
+                            <div className="p-2 bg-purple-50 rounded-xl text-purple-600"><Package className="w-4 h-4" /></div>
+                            <div>
+                               <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Berat</p>
+                               <p className="text-xs font-bold text-gray-700">{order.weight} Kg</p>
+                            </div>
+                         </div>
+                      </div>
+                      <p className="text-xs font-bold text-gray-500 flex items-center gap-2 px-1"><Clock className="w-4 h-4 text-blue-300" /> Masuk pada {new Date(order.createdAt).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</p>
                     </div>
                     
-                    <div className="flex items-center justify-between pt-4 border-t border-gray-50">
-                      <p className="text-xl font-black text-blue-700">{formatIDR(order.totalPrice)}</p>
-                      <div className="flex items-center gap-2 text-blue-600 font-bold text-xs opacity-0 group-hover:opacity-100 transition-opacity">
-                         DETAIL <ChevronRight className="w-4 h-4" />
+                    <div className="flex items-center justify-between pt-6 mt-6 border-t border-gray-50">
+                      <div className="space-y-0.5">
+                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Total Bayar</p>
+                        <p className="text-2xl font-black text-blue-700 tracking-tight">{formatIDR(order.totalPrice)}</p>
                       </div>
+                      <button className="flex items-center gap-2 bg-blue-50 text-blue-600 px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm">
+                         DETAIL <ArrowUpRight className="w-4 h-4" />
+                      </button>
                     </div>
                   </Card>
                 ))}
                 
                 {filteredOrders.length === 0 && (
-                  <div className="col-span-full py-24 text-center">
-                    <div className="w-24 h-24 bg-gray-50 rounded-[2.5rem] flex items-center justify-center mx-auto mb-6 text-gray-200 border">
-                      <FilterX className="w-12 h-12" />
+                  <div className="col-span-full py-32 text-center animate-fade-in">
+                    <div className="relative w-32 h-32 mx-auto mb-8">
+                       <div className="absolute inset-0 bg-blue-100/50 rounded-full blur-2xl animate-pulse"></div>
+                       <div className="relative w-full h-full bg-white rounded-[3rem] flex items-center justify-center border shadow-sm">
+                          <FilterX className="w-16 h-16 text-blue-200" />
+                       </div>
                     </div>
-                    <h3 className="text-xl font-black text-gray-800">Tidak ada pesanan</h3>
-                    <p className="text-gray-400 font-medium max-w-xs mx-auto mt-2">
-                      {role === 'CUSTOMER' ? 'Anda belum memiliki riwayat pesanan dengan nomor ini.' : 'Belum ada data pesanan yang sesuai filter.'}
+                    <h3 className="text-3xl font-black text-gray-800 tracking-tight">Belum ada pesanan</h3>
+                    <p className="text-gray-500 font-medium max-w-sm mx-auto mt-4 leading-relaxed">
+                      {role === 'CUSTOMER' ? `Sepertinya nomor ${customerPhone} belum memiliki pesanan aktif di sistem kami.` : 'Data pesanan yang Anda cari tidak ditemukan.'}
                     </p>
                     {role === 'CUSTOMER' && (
-                      <Button onClick={() => setActiveTab('add')} className="mt-8 px-8 py-4 bg-blue-600 rounded-2xl mx-auto">
-                        BUAT PESANAN PERTAMA <PlusCircle className="w-5 h-5" />
-                      </Button>
+                      <button onClick={() => setActiveTab('add')} className="mt-10 px-10 py-5 bg-blue-600 text-white rounded-[2rem] font-black text-lg shadow-xl shadow-blue-200 hover:-translate-y-1 active:scale-95 transition-all flex items-center justify-center gap-3 mx-auto">
+                        BUAT PESANAN SEKARANG <PlusCircle className="w-6 h-6" />
+                      </button>
                     )}
                   </div>
                 )}
@@ -952,24 +1004,32 @@ export default function App() {
         </main>
       </div>
 
-      <div className="md:hidden fixed bottom-6 left-6 right-6 h-18 bg-white/90 backdrop-blur-2xl rounded-[2.5rem] border shadow-2xl z-50 flex items-center px-4 justify-around">
-        <button onClick={() => setActiveTab(role === 'ADMIN' ? 'dashboard' : 'orders')} className={`flex flex-col items-center gap-1 transition-all ${activeTab === (role === 'ADMIN' ? 'dashboard' : 'orders') ? 'text-blue-600' : 'text-gray-400'}`}>
-          {role === 'ADMIN' ? <LayoutDashboard /> : <Activity />}
-          <span className="text-[10px] font-black uppercase tracking-tighter">{role === 'ADMIN' ? 'Beranda' : 'Lacak'}</span>
+      <div className="md:hidden fixed bottom-6 left-6 right-6 h-20 bg-white/90 backdrop-blur-3xl rounded-[2.5rem] border shadow-2xl z-50 flex items-center px-6 justify-around">
+        <button onClick={() => setActiveTab(role === 'ADMIN' ? 'dashboard' : 'orders')} className={`flex flex-col items-center gap-1.5 transition-all duration-300 ${activeTab === (role === 'ADMIN' ? 'dashboard' : 'orders') ? 'text-blue-600 scale-110' : 'text-gray-400 hover:text-gray-600'}`}>
+          <div className={`p-2 rounded-xl ${activeTab === (role === 'ADMIN' ? 'dashboard' : 'orders') ? 'bg-blue-50' : ''}`}>
+            {role === 'ADMIN' ? <LayoutDashboard className="w-6 h-6" /> : <Activity className="w-6 h-6" />}
+          </div>
+          <span className="text-[9px] font-black uppercase tracking-tighter">{role === 'ADMIN' ? 'Dashboard' : 'Lacak'}</span>
         </button>
         {role === 'ADMIN' && (
-          <button onClick={() => setActiveTab('orders')} className={`flex flex-col items-center gap-1 transition-all ${activeTab === 'orders' ? 'text-blue-600' : 'text-gray-400'}`}>
-            <ClipboardList />
-            <span className="text-[10px] font-black uppercase tracking-tighter">Daftar</span>
+          <button onClick={() => setActiveTab('orders')} className={`flex flex-col items-center gap-1.5 transition-all duration-300 ${activeTab === 'orders' ? 'text-blue-600 scale-110' : 'text-gray-400 hover:text-gray-600'}`}>
+            <div className={`p-2 rounded-xl ${activeTab === 'orders' ? 'bg-blue-50' : ''}`}>
+              <ClipboardList className="w-6 h-6" />
+            </div>
+            <span className="text-[9px] font-black uppercase tracking-tighter">Daftar</span>
           </button>
         )}
-        <button onClick={() => setActiveTab('add')} className={`flex flex-col items-center gap-1 transition-all ${activeTab === 'add' ? 'text-blue-600' : 'text-gray-400'}`}>
-          <PlusCircle />
-          <span className="text-[10px] font-black uppercase tracking-tighter">Buat</span>
+        <button onClick={() => setActiveTab('add')} className={`flex flex-col items-center gap-1.5 transition-all duration-300 ${activeTab === 'add' ? 'text-blue-600 scale-110' : 'text-gray-400 hover:text-gray-600'}`}>
+          <div className={`p-2 rounded-xl ${activeTab === 'add' ? 'bg-blue-50' : ''}`}>
+            <PlusCircle className="w-6 h-6" />
+          </div>
+          <span className="text-[9px] font-black uppercase tracking-tighter">Tambah</span>
         </button>
-        <button onClick={handleLogout} className="flex flex-col items-center gap-1 text-red-400">
-          <LogOut />
-          <span className="text-[10px] font-black uppercase tracking-tighter">Logout</span>
+        <button onClick={handleLogout} className="flex flex-col items-center gap-1.5 text-red-400 hover:text-red-500 active:scale-95 transition-all">
+          <div className="p-2">
+            <LogOut className="w-6 h-6" />
+          </div>
+          <span className="text-[9px] font-black uppercase tracking-tighter">Keluar</span>
         </button>
       </div>
     </div>
@@ -978,7 +1038,7 @@ export default function App() {
 
 function SidebarLink({ icon: Icon, label, active, onClick }: any) {
   return (
-    <button onClick={onClick} className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all ${active ? 'bg-white text-blue-700 font-black shadow-xl scale-[1.02]' : 'text-blue-100 hover:bg-white/10 font-bold'}`}>
+    <button onClick={onClick} className={`w-full flex items-center gap-4 px-6 py-5 rounded-[1.5rem] transition-all duration-300 ${active ? 'bg-white text-blue-700 font-black shadow-xl shadow-blue-900/10 scale-[1.05]' : 'text-blue-100 hover:bg-white/10 font-bold hover:translate-x-1'}`}>
       <Icon className="w-5 h-5" /><span>{label}</span>
     </button>
   );
@@ -987,10 +1047,10 @@ function SidebarLink({ icon: Icon, label, active, onClick }: any) {
 function StatCard({ label, value, icon: Icon, color }: any) {
   const colors: any = { blue: 'bg-blue-600 shadow-blue-100', green: 'bg-green-600 shadow-green-100', orange: 'bg-orange-600 shadow-orange-100', purple: 'bg-purple-600 shadow-purple-100' };
   return (
-    <Card className="hover:scale-[1.03] transition-all border-none shadow-sm">
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white mb-4 ${colors[color]}`}><Icon className="w-5 h-5" /></div>
+    <Card className="hover:scale-[1.03] transition-all border-none shadow-sm group">
+      <div className={`w-12 h-12 rounded-[1.25rem] flex items-center justify-center text-white mb-5 transition-transform group-hover:rotate-12 ${colors[color]}`}><Icon className="w-6 h-6" /></div>
       <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{label}</p>
-      <p className="text-2xl font-black text-gray-800 mt-1">{value}</p>
+      <p className="text-3xl font-black text-gray-800 mt-2 tracking-tight">{value}</p>
     </Card>
   );
 }
@@ -1010,6 +1070,8 @@ function OrderForm({ role, prefilledPhone, onAdd }: any) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (formData.weight <= 0) return;
+    
     const newOrder: Order = {
       id: Date.now().toString(),
       notaNumber: generateNotaNumber(),
@@ -1024,39 +1086,67 @@ function OrderForm({ role, prefilledPhone, onAdd }: any) {
   };
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <Card className="p-8 md:p-10 shadow-2xl border-none">
-        <h3 className="text-2xl font-black mb-10">Pendaftaran Pesanan</h3>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-1">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Nama Lengkap</label>
-              <input required className="w-full px-5 py-4 border border-blue-50 bg-gray-50/50 rounded-2xl outline-none focus:bg-white transition-all font-bold" value={formData.customerName} onChange={(e) => setFormData({...formData, customerName: e.target.value})} placeholder="Contoh: Budi Santoso" />
+    <div className="max-w-3xl mx-auto animate-zoom-in">
+      <Card className="p-10 md:p-12 shadow-2xl border-none relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-40 h-40 bg-blue-50 rounded-full blur-3xl -mr-20 -mt-20"></div>
+        <div className="flex items-center gap-4 mb-12">
+           <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-blue-100">
+              <PlusCircle className="w-8 h-8" />
+           </div>
+           <div>
+              <h3 className="text-3xl font-black text-gray-900 tracking-tight">Formulir Pesanan</h3>
+              <p className="text-sm font-bold text-gray-400">Silakan lengkapi detail cucian Anda</p>
+           </div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Nama Lengkap</label>
+              <input required className="w-full px-6 py-5 border border-gray-100 bg-gray-50/50 rounded-[1.5rem] outline-none focus:bg-white focus:ring-4 focus:ring-blue-100 transition-all font-bold text-gray-700" value={formData.customerName} onChange={(e) => setFormData({...formData, customerName: e.target.value})} placeholder="Nama Anda" />
             </div>
-            <div className="space-y-1">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">No WhatsApp</label>
-              <input required className="w-full px-5 py-4 border border-blue-50 bg-gray-50/50 rounded-2xl outline-none focus:bg-white transition-all font-bold" value={formData.customerPhone} onChange={(e) => setFormData({...formData, customerPhone: e.target.value})} placeholder="Contoh: 081234567890" />
-            </div>
-          </div>
-          <div className="space-y-1">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Alamat Lengkap</label>
-            <textarea required rows={2} className="w-full px-5 py-4 border border-blue-50 bg-gray-50/50 rounded-2xl outline-none focus:bg-white transition-all font-medium" value={formData.customerAddress} onChange={(e) => setFormData({...formData, customerAddress: e.target.value})} placeholder="Masukkan alamat untuk antar/jemput" />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-1">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Layanan</label>
-              <select className="w-full px-5 py-4 border border-blue-50 bg-gray-50/50 rounded-2xl outline-none focus:bg-white transition-all font-bold" value={formData.serviceType} onChange={(e) => setFormData({...formData, serviceType: e.target.value as ServiceType})}>
-                {Object.keys(SERVICE_PRICES).map(s => <option key={s} value={s}>{s} ({formatIDR(SERVICE_PRICES[s as ServiceType])})</option>)}
-              </select>
-            </div>
-            <div className="space-y-1">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Berat (Kg) / Unit</label>
-              <input required type="number" min="0" step="0.1" className="w-full px-5 py-4 border border-blue-50 bg-gray-50/50 rounded-2xl outline-none font-black text-xl focus:bg-white transition-all" value={formData.weight} onChange={(e) => setFormData({...formData, weight: parseFloat(e.target.value) || 0})} />
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">WhatsApp Aktif</label>
+              <input required className="w-full px-6 py-5 border border-gray-100 bg-gray-50/50 rounded-[1.5rem] outline-none focus:bg-white focus:ring-4 focus:ring-blue-100 transition-all font-bold text-gray-700" value={formData.customerPhone} onChange={(e) => setFormData({...formData, customerPhone: e.target.value})} placeholder="Nomor HP" />
             </div>
           </div>
-          <div className="p-6 bg-blue-600 rounded-[2.5rem] flex flex-col md:flex-row items-center justify-between text-white gap-6 shadow-xl shadow-blue-100">
-            <div><p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80 mb-1">Estimasi Tagihan</p><p className="text-4xl font-black">{formatIDR(total)}</p></div>
-            <Button type="submit" disabled={total <= 0} className="bg-white text-blue-600 hover:bg-gray-50 w-full md:w-auto px-10 py-4 text-lg">DAFTARKAN SEKARANG</Button>
+
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Alamat Penjemputan / Pengantaran</label>
+            <textarea required rows={2} className="w-full px-6 py-5 border border-gray-100 bg-gray-50/50 rounded-[1.5rem] outline-none focus:bg-white focus:ring-4 focus:ring-blue-100 transition-all font-medium text-gray-700" value={formData.customerAddress} onChange={(e) => setFormData({...formData, customerAddress: e.target.value})} placeholder="Masukkan alamat lengkap" />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Jenis Layanan</label>
+              <div className="relative">
+                <select className="w-full px-6 py-5 border border-gray-100 bg-gray-50/50 rounded-[1.5rem] outline-none focus:bg-white focus:ring-4 focus:ring-blue-100 transition-all font-black text-blue-600 appearance-none cursor-pointer" value={formData.serviceType} onChange={(e) => setFormData({...formData, serviceType: e.target.value as ServiceType})}>
+                  {Object.keys(SERVICE_PRICES).map(s => <option key={s} value={s}>{s} • {formatIDR(SERVICE_PRICES[s as ServiceType])}</option>)}
+                </select>
+                <ChevronRight className="absolute right-6 top-1/2 -translate-y-1/2 rotate-90 text-blue-400 pointer-events-none" />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Berat (Kg) atau Qty Unit</label>
+              <div className="relative">
+                 <input required type="number" min="0.1" step="0.1" className="w-full px-6 py-5 border border-gray-100 bg-gray-50/50 rounded-[1.5rem] outline-none font-black text-3xl focus:bg-white focus:ring-4 focus:ring-blue-100 transition-all text-gray-800" value={formData.weight || ''} onChange={(e) => setFormData({...formData, weight: parseFloat(e.target.value) || 0})} placeholder="0.0" />
+                 <span className="absolute right-6 top-1/2 -translate-y-1/2 font-black text-gray-300 uppercase tracking-widest pointer-events-none">Input</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-10 bg-blue-600 rounded-[3rem] flex flex-col md:flex-row items-center justify-between text-white gap-8 shadow-2xl shadow-blue-200">
+            <div className="text-center md:text-left">
+               <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-70 mb-2">Estimasi Total Tagihan</p>
+               <p className="text-6xl font-black tracking-tighter">{formatIDR(total)}</p>
+            </div>
+            <button 
+              type="submit" 
+              disabled={total <= 0} 
+              className="bg-white text-blue-700 hover:bg-gray-50 disabled:bg-white/50 disabled:cursor-not-allowed w-full md:w-auto px-12 py-5 text-xl font-black rounded-[2rem] shadow-xl transition-all active:scale-95 flex items-center justify-center gap-3"
+            >
+              DAFTAR SEKARANG <ArrowRight className="w-6 h-6" />
+            </button>
           </div>
         </form>
       </Card>
