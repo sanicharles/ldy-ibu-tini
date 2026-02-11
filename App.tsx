@@ -18,7 +18,7 @@ import {
   Moon,
   Sun,
   X,
-  Printer,
+  Printer, 
   ChevronRight,
   ClipboardList,
   MessageCircle,
@@ -39,10 +39,16 @@ import {
   Info,
   Truck,
   AlertCircle,
-  Cloud,
-  CloudOff,
-  RefreshCw,
-  Database
+  Zap,
+  Trash2,
+  CalendarDays,
+  Coins,
+  ShieldCheck,
+  ZapIcon,
+  Star,
+  RefreshCcw,
+  SearchCheck,
+  Activity
 } from 'lucide-react';
 import { 
   LineChart, 
@@ -68,12 +74,12 @@ import {
   playNotificationSound, 
   sendWhatsAppMessage,
   showPushNotification,
-  getCloudBin,
-  updateCloudBin,
-  createCloudBin
+  fetchOrdersFromSupabase,
+  upsertOrderToSupabase,
+  deleteOrderFromSupabase
 } from './utils';
+import { supabase } from './supabase';
 
-// Admin PIN as requested
 const ADMIN_PIN = "2115";
 
 // --- Shared Components ---
@@ -81,7 +87,7 @@ const ADMIN_PIN = "2115";
 const Button = ({ children, onClick, variant = 'primary', className = '', type = 'button', disabled = false }: any) => {
   const variants = {
     primary: 'bg-blue-600 text-white hover:bg-blue-700 shadow-md shadow-blue-200',
-    secondary: 'bg-white/50 text-gray-700 hover:bg-white/80 backdrop-blur-sm',
+    secondary: 'bg-white text-blue-600 border-2 border-blue-600 hover:bg-blue-50',
     success: 'bg-green-600 text-white hover:bg-green-700 shadow-md shadow-green-100',
     danger: 'bg-red-600 text-white hover:bg-red-700 shadow-md shadow-red-100',
     outline: 'border-2 border-blue-600 text-blue-600 hover:bg-blue-50/50 backdrop-blur-sm'
@@ -107,40 +113,39 @@ const Card = ({ children, className = "", onClick }: { children?: React.ReactNod
   </div>
 );
 
-const Toast = ({ message, type, onClose }: { message: string, type: 'success' | 'info', onClose: () => void }) => (
-  <div className={`fixed top-4 right-4 z-[100] p-4 rounded-xl shadow-xl border flex items-center gap-3 animate-slide-in-right ${type === 'success' ? 'bg-green-50/90 backdrop-blur-md border-green-200 text-green-800' : 'bg-blue-50/90 backdrop-blur-md border-blue-200 text-blue-800'}`}>
-    {type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <BellRing className="w-5 h-5 text-blue-600" />}
+const Toast = ({ message, type, onClose }: { message: string, type: 'success' | 'info' | 'danger', onClose: () => void }) => (
+  <div className={`fixed top-4 right-4 z-[100] p-4 rounded-xl shadow-xl border flex items-center gap-3 animate-slide-in-right ${
+    type === 'success' ? 'bg-green-50/90 backdrop-blur-md border-green-200 text-green-800' : 
+    type === 'danger' ? 'bg-red-50/90 backdrop-blur-md border-red-200 text-red-800' :
+    'bg-blue-50/90 backdrop-blur-md border-blue-200 text-blue-800'}`}>
+    {type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : type === 'danger' ? <AlertCircle className="w-5 h-5 text-red-600" /> : <BellRing className="w-5 h-5 text-blue-600" />}
     <p className="font-medium text-sm">{message}</p>
     <button onClick={onClose} className="p-1 hover:bg-black/5 rounded-full"><X className="w-4 h-4" /></button>
   </div>
 );
 
-// --- Confirmation Dialog ---
-
-const ConfirmationDialog = ({ isOpen, title, message, onConfirm, onCancel }: { isOpen: boolean, title: string, message: string, onConfirm: () => void, onCancel: () => void }) => {
+const ConfirmationDialog = ({ isOpen, title, message, onConfirm, onCancel, confirmLabel = "Ya, Lanjutkan", isDanger = false }: { isOpen: boolean, title: string, message: string, onConfirm: () => void, onCancel: () => void, confirmLabel?: string, isDanger?: boolean }) => {
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-blue-900/40 backdrop-blur-sm animate-fade-in" onClick={onCancel}></div>
       <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl relative overflow-hidden animate-zoom-in p-8 text-center">
-        <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-6 text-blue-600">
+        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 ${isDanger ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'}`}>
           <AlertCircle className="w-8 h-8" />
         </div>
         <h3 className="text-xl font-black text-gray-800 mb-2">{title}</h3>
         <p className="text-gray-500 font-medium mb-8 leading-relaxed">{message}</p>
         <div className="grid grid-cols-2 gap-3">
           <button onClick={onCancel} className="py-3 rounded-2xl font-bold bg-gray-50 text-gray-500 hover:bg-gray-100 transition-colors">Batal</button>
-          <button onClick={onConfirm} className="py-3 rounded-2xl font-bold bg-blue-600 text-white hover:bg-blue-700 transition-colors">Ya, Lanjutkan</button>
+          <button onClick={onConfirm} className={`py-3 rounded-2xl font-bold text-white transition-colors ${isDanger ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'}`}>{confirmLabel}</button>
         </div>
       </div>
     </div>
   );
 };
 
-// --- Modal Component ---
-
-const OrderModal = ({ order, onClose, isAdmin, onUpdateStatus }: { order: Order | null, onClose: () => void, isAdmin: boolean, onUpdateStatus: (id: string, s: OrderStatus) => void }) => {
-  const [confirmData, setConfirmData] = useState<{ status: OrderStatus, title: string, msg: string } | null>(null);
+const OrderModal = ({ order, onClose, isAdmin, onUpdateStatus, onDeleteOrder }: { order: Order | null, onClose: () => void, isAdmin: boolean, onUpdateStatus: (id: string, s: OrderStatus) => void, onDeleteOrder: (id: string) => void }) => {
+  const [confirmData, setConfirmData] = useState<{ type: 'status' | 'delete', status?: OrderStatus, title: string, msg: string } | null>(null);
 
   if (!order) return null;
 
@@ -183,13 +188,18 @@ const OrderModal = ({ order, onClose, isAdmin, onUpdateStatus }: { order: Order 
     doc.save(`Nota_${order.notaNumber}.pdf`);
   };
 
-  const executeStatusUpdate = () => {
+  const handleConfirmAction = () => {
     if (!confirmData) return;
-    if (confirmData.status === 'Selesai') {
-        const msg = `Halo Kak ${order.customerName} 👋 Laundry Anda sudah SELESAI ✅ Total: ${formatIDR(order.totalPrice)}. Silakan ambil ke outlet Laundry Ibu Tini ya!`;
-        sendWhatsAppMessage(order.customerPhone, msg);
+    if (confirmData.type === 'status' && confirmData.status) {
+        if (confirmData.status === 'Selesai') {
+            const msg = `Halo Kak ${order.customerName} 👋 Laundry Anda sudah SELESAI ✅ Total: ${formatIDR(order.totalPrice)}. Silakan ambil ke outlet Laundry Ibu Tini ya!`;
+            sendWhatsAppMessage(order.customerPhone, msg);
+        }
+        onUpdateStatus(order.id, confirmData.status);
+    } else if (confirmData.type === 'delete') {
+        onDeleteOrder(order.id);
+        onClose();
     }
-    onUpdateStatus(order.id, confirmData.status);
     setConfirmData(null);
   };
 
@@ -198,7 +208,11 @@ const OrderModal = ({ order, onClose, isAdmin, onUpdateStatus }: { order: Order 
     sendWhatsAppMessage(order.customerPhone, msg);
   };
 
-  const statusColors: any = { 'Baru': 'bg-blue-600', 'Proses': 'bg-orange-500', 'Selesai': 'bg-green-600' };
+  const statusColors: any = { 
+    'Baru': 'bg-blue-600 shadow-blue-200', 
+    'Proses': 'bg-orange-500 shadow-orange-200', 
+    'Selesai': 'bg-green-600 shadow-green-200' 
+  };
 
   return (
     <>
@@ -206,108 +220,140 @@ const OrderModal = ({ order, onClose, isAdmin, onUpdateStatus }: { order: Order 
         isOpen={!!confirmData}
         title={confirmData?.title || ''}
         message={confirmData?.msg || ''}
-        onConfirm={executeStatusUpdate}
+        confirmLabel={confirmData?.type === 'delete' ? "Hapus Sekarang" : "Ya, Lanjutkan"}
+        isDanger={confirmData?.type === 'delete'}
+        onConfirm={handleConfirmAction}
         onCancel={() => setConfirmData(null)}
       />
 
       <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
         <div className="absolute inset-0 bg-blue-900/40 backdrop-blur-sm animate-fade-in" onClick={onClose}></div>
-        <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl relative overflow-hidden animate-zoom-in">
+        <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl relative overflow-hidden animate-zoom-in max-h-[90vh] flex flex-col">
           <div className={`h-2 ${statusColors[order.status]}`}></div>
-          <div className="p-6 md:p-8 overflow-y-auto max-h-[90vh]">
-            <div className="flex justify-between items-start mb-8">
-              <div>
-                <p className="text-[10px] font-black text-blue-500/50 uppercase tracking-[0.2em] mb-1">{order.notaNumber}</p>
-                <h3 className="text-2xl font-black text-gray-800 tracking-tight">{order.customerName}</h3>
-              </div>
-              <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-                <X className="w-6 h-6 text-gray-400" />
+          <div className="px-6 py-4 flex justify-between items-center border-b bg-gray-50/50">
+            <div className="flex items-center gap-3">
+              <span className={`px-2 py-1 rounded-lg text-[10px] font-black text-white uppercase ${statusColors[order.status]}`}>{order.status}</span>
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{order.notaNumber}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              {isAdmin && (
+                <button 
+                  onClick={() => setConfirmData({
+                    type: 'delete',
+                    title: 'Hapus Pesanan?',
+                    msg: `Tindakan ini tidak dapat dibatalkan. Apakah Anda yakin ingin menghapus pesanan ${order.notaNumber}?`
+                  })}
+                  className="p-2 hover:bg-red-50 rounded-full transition-colors text-gray-400 hover:text-red-500"
+                  title="Hapus Order"
+                >
+                  <Trash2 className="w-5 h-5" />
+                </button>
+              )}
+              <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400">
+                <X className="w-5 h-5" />
               </button>
             </div>
+          </div>
 
-            <div className="grid grid-cols-2 gap-6 mb-8">
-              <div className="space-y-1">
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1"><Shirt className="w-3 h-3" /> Layanan</p>
-                <p className="font-bold text-gray-800">{order.serviceType}</p>
+          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            <section className="bg-blue-50/50 rounded-2xl p-4 border border-blue-100/50">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center text-blue-600">
+                  <UserCircle className="w-7 h-7" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-xl font-black text-gray-800 truncate">{order.customerName}</h3>
+                  <p className="text-sm font-bold text-blue-600 flex items-center gap-1 mt-1">
+                    <Phone className="w-3 h-3" /> {order.customerPhone}
+                  </p>
+                </div>
               </div>
-              <div className="space-y-1">
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1"><Package className="w-3 h-3" /> Berat/Qty</p>
-                <p className="font-bold text-gray-800">{order.weight} Unit/Kg</p>
+              <div className="mt-4 flex items-start gap-2 text-sm text-gray-600 font-medium leading-relaxed">
+                <MapPin className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
+                <span>{order.customerAddress}</span>
               </div>
-              <div className="space-y-1">
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1"><Clock className="w-3 h-3" /> Tgl Masuk</p>
-                <p className="font-bold text-gray-800">{new Date(order.createdAt).toLocaleDateString('id-ID')}</p>
+            </section>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 flex items-center gap-1">
+                   <Shirt className="w-3 h-3" /> Layanan
+                </p>
+                <p className="font-bold text-gray-800 text-sm">{order.serviceType}</p>
               </div>
-              <div className="space-y-1">
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Status</p>
-                <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black text-white uppercase ${statusColors[order.status]}`}>{order.status}</span>
+              <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 flex items-center gap-1">
+                   <Package className="w-3 h-3" /> Berat/Qty
+                </p>
+                <p className="font-bold text-gray-800 text-sm">{order.weight} {order.serviceType.includes('Cuci') ? 'Kg' : 'Unit'}</p>
+              </div>
+              <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 flex items-center gap-1">
+                   <CalendarDays className="w-3 h-3" /> Tanggal
+                </p>
+                <p className="font-bold text-gray-800 text-sm">{new Date(order.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</p>
+              </div>
+              <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 flex items-center gap-1">
+                   <Truck className="w-3 h-3" /> Pengiriman
+                </p>
+                <p className="font-bold text-gray-800 text-sm">{order.deliveryMethod}</p>
               </div>
             </div>
 
-            <div className="space-y-4 mb-8">
-              <div className="flex gap-3">
-                <div className="p-2 bg-blue-50 rounded-xl"><Phone className="w-4 h-4 text-blue-600" /></div>
-                <div>
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Kontak</p>
-                  <p className="font-bold text-gray-800">{order.customerPhone}</p>
+            {order.specialRequest && (
+              <div className="bg-orange-50 rounded-2xl p-4 border border-orange-100">
+                <div className="flex items-center gap-2 mb-1">
+                  <Info className="w-4 h-4 text-orange-500" />
+                  <p className="text-[10px] font-black text-orange-600 uppercase tracking-widest">Catatan Khusus</p>
                 </div>
+                <p className="font-bold text-orange-800 text-sm italic">"{order.specialRequest}"</p>
               </div>
-              <div className="flex gap-3">
-                <div className="p-2 bg-orange-50 rounded-xl"><MapPin className="w-4 h-4 text-orange-600" /></div>
-                <div>
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Alamat</p>
-                  <p className="font-medium text-gray-600 text-sm leading-relaxed">{order.customerAddress}</p>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <div className="p-2 bg-green-50 rounded-xl"><Truck className="w-4 h-4 text-green-600" /></div>
-                <div>
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Pengiriman</p>
-                  <p className="font-bold text-gray-800">{order.deliveryMethod}</p>
-                </div>
-              </div>
-              {order.specialRequest && (
-                <div className="flex gap-3">
-                  <div className="p-2 bg-purple-50 rounded-xl"><Info className="w-4 h-4 text-purple-600" /></div>
-                  <div>
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Catatan Khusus</p>
-                    <p className="font-medium text-gray-600 text-sm italic">"{order.specialRequest}"</p>
-                  </div>
-                </div>
-              )}
-            </div>
+            )}
 
-            <div className="bg-gray-50 rounded-2xl p-4 flex items-center justify-between mb-8">
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Pembayaran</p>
-              <p className="text-2xl font-black text-blue-700">{formatIDR(order.totalPrice)}</p>
+            <div className="bg-gray-800 text-white rounded-2xl p-5 shadow-inner flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Total Bayar</p>
+                <p className="text-3xl font-black tracking-tight">{formatIDR(order.totalPrice)}</p>
+              </div>
+              <Coins className="w-10 h-10 text-yellow-500 opacity-20" />
             </div>
+          </div>
 
+          <div className="p-6 bg-gray-50 border-t flex flex-col gap-3">
             <div className="grid grid-cols-2 gap-3">
-              <button onClick={generatePDF} className="flex items-center justify-center gap-2 bg-white border border-gray-200 text-gray-700 py-3 rounded-2xl font-bold transition-all hover:bg-gray-50">
+              <button onClick={generatePDF} className="flex-1 flex items-center justify-center gap-2 bg-white border border-gray-200 text-gray-700 py-3 rounded-2xl font-bold transition-all hover:bg-gray-50 shadow-sm active:scale-95">
                 <Printer className="w-4 h-4" /> CETAK NOTA
               </button>
-              <button onClick={handleContact} className="flex items-center justify-center gap-2 bg-green-50 text-green-700 py-3 rounded-2xl font-bold transition-all hover:bg-green-100">
+              <button onClick={handleContact} className="flex-1 flex items-center justify-center gap-2 bg-green-50 text-green-700 py-3 rounded-2xl font-bold transition-all hover:bg-green-100 shadow-sm shadow-green-100/50 active:scale-95">
                 <MessageCircle className="w-4 h-4" /> WHATSAPP
               </button>
-              {isAdmin && (
-                <div className="col-span-2 mt-2">
-                  {order.status === 'Baru' && (
-                    <Button onClick={() => setConfirmData({ 
-                        status: 'Proses', 
-                        title: 'Mulai Pengerjaan?', 
-                        msg: `Ubah status ${order.customerName} menjadi dalam proses?` 
-                    })} className="w-full py-4 bg-orange-500 hover:bg-orange-600">MULAI PROSES PENGERJAAN</Button>
-                  )}
-                  {order.status === 'Proses' && (
-                    <Button onClick={() => setConfirmData({ 
-                        status: 'Selesai', 
-                        title: 'Selesaikan Order?', 
-                        msg: `Ubah status ${order.customerName} menjadi selesai dan kirim notifikasi WhatsApp?` 
-                    })} variant="success" className="w-full py-4">SELESAIKAN & KIRIM NOTIFIKASI</Button>
-                  )}
-                </div>
-              )}
             </div>
+            
+            {isAdmin && (
+              <div className="mt-1">
+                {order.status === 'Baru' && (
+                  <Button onClick={() => setConfirmData({ 
+                      type: 'status',
+                      status: 'Proses', 
+                      title: 'Mulai Pengerjaan?', 
+                      msg: `Ubah status ${order.customerName} menjadi 'Proses'?` 
+                  })} className="w-full py-4 bg-orange-500 hover:bg-orange-600 font-black tracking-wide">
+                    MULAI PROSES PENGERJAAN
+                  </Button>
+                )}
+                {order.status === 'Proses' && (
+                  <Button onClick={() => setConfirmData({ 
+                      type: 'status',
+                      status: 'Selesai', 
+                      title: 'Selesaikan Order?', 
+                      msg: `Kirim notifikasi ke ${order.customerName} bahwa pesanan sudah selesai?` 
+                  })} variant="success" className="w-full py-4 font-black tracking-wide">
+                    SELESAIKAN & KIRIM NOTIFIKASI
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -330,87 +376,84 @@ export default function App() {
   const [serviceFilter, setServiceFilter] = useState<ServiceType | 'Semua'>('Semua');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
-  const [toast, setToast] = useState<{ message: string, type: 'success' | 'info' } | null>(null);
+  const [toast, setToast] = useState<{ message: string, type: 'success' | 'info' | 'danger' } | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  
-  // Cloud State
-  const [cloudBinId, setCloudBinId] = useState<string | null>(null);
-  const [cloudStatus, setCloudStatus] = useState<'idle' | 'syncing' | 'error' | 'connected'>('idle');
+  const [dbStatus, setDbStatus] = useState<'offline' | 'syncing' | 'live'>('offline');
 
   // Auth state for Admin
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [adminPinInput, setAdminPinInput] = useState('');
   const [adminPinError, setAdminPinError] = useState(false);
 
-  // --- Initial Loading ---
-  useEffect(() => {
-    const initialize = async () => {
-      // 1. Local Storage fallback
-      const savedOrders = localStorage.getItem('tini_orders');
-      if (savedOrders) setOrders(JSON.parse(savedOrders));
-
-      const savedPhone = localStorage.getItem('tini_customer_phone');
-      if (savedPhone) setCustomerPhone(savedPhone);
-
-      const savedRole = localStorage.getItem('tini_role');
-      if (savedRole) {
-        setRole(savedRole as Role);
-        setActiveTab(savedRole === 'ADMIN' ? 'dashboard' : 'add');
-      }
-
-      // 2. Cloud DB Connection
-      let binId = localStorage.getItem('tini_cloud_bin_id');
-      setCloudStatus('syncing');
-      
-      if (binId) {
-        const cloudData = await getCloudBin(binId);
-        if (cloudData && Array.isArray(cloudData)) {
-          setOrders(cloudData);
-          setCloudStatus('connected');
-        } else {
-          setCloudStatus('error');
-        }
-        setCloudBinId(binId);
+  // --- Initialize Supabase & Realtime ---
+  const initializeSupabase = useCallback(async () => {
+    setDbStatus('syncing');
+    try {
+      const remoteOrders = await fetchOrdersFromSupabase();
+      if (remoteOrders.length > 0) {
+        setOrders(remoteOrders);
+        localStorage.setItem('tini_orders', JSON.stringify(remoteOrders));
       } else {
-        // Initial setup for cloud
-        const newBinId = await createCloudBin(savedOrders ? JSON.parse(savedOrders) : []);
-        if (newBinId) {
-          localStorage.setItem('tini_cloud_bin_id', newBinId);
-          setCloudBinId(newBinId);
-          setCloudStatus('connected');
-        } else {
-          setCloudStatus('error');
-        }
+        const saved = localStorage.getItem('tini_orders');
+        if (saved) setOrders(JSON.parse(saved));
       }
+      setDbStatus('live');
 
-      const timer = setTimeout(() => {
-        setShowSplash(false);
-        if (!savedRole) setShowWelcome(true);
-      }, 2000);
-      return () => clearTimeout(timer);
-    };
+      const channel = supabase
+        .channel('schema-db-changes')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'orders' },
+          (payload) => {
+            if (payload.eventType === 'INSERT') {
+              setOrders(prev => [payload.new as Order, ...prev]);
+              if (role === 'ADMIN') {
+                playNotificationSound();
+                setToast({ message: "Order Baru Masuk Real-time! 🧺", type: 'info' });
+                setTimeout(() => setToast(null), 5000);
+              }
+            } else if (payload.eventType === 'UPDATE') {
+              setOrders(prev => prev.map(o => o.id === payload.new.id ? (payload.new as Order) : o));
+            } else if (payload.eventType === 'DELETE') {
+              setOrders(prev => prev.filter(o => o.id !== payload.old.id));
+              if (selectedOrder?.id === payload.old.id) {
+                setSelectedOrder(null);
+                setToast({ message: "Pesanan ini telah dihapus oleh Admin.", type: 'info' });
+                setTimeout(() => setToast(null), 5000);
+              }
+            }
+          }
+        )
+        .subscribe();
 
-    initialize();
-  }, []);
-
-  // --- Automatic Cloud Push ---
-  const syncToCloud = useCallback(async (data: Order[]) => {
-    if (!cloudBinId) return;
-    setCloudStatus('syncing');
-    const success = await updateCloudBin(cloudBinId, data);
-    setCloudStatus(success ? 'connected' : 'error');
-  }, [cloudBinId]);
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    } catch (err) {
+      console.error("Supabase connect failed:", err);
+      setDbStatus('offline');
+      const saved = localStorage.getItem('tini_orders');
+      if (saved) setOrders(JSON.parse(saved));
+    }
+  }, [role, selectedOrder]);
 
   useEffect(() => {
-    localStorage.setItem('tini_orders', JSON.stringify(orders));
+    initializeSupabase();
     
-    // Debounce cloud sync to avoid hitting API rate limits too often
-    const timeout = setTimeout(() => {
-      syncToCloud(orders);
-    }, 3000);
-    
-    return () => clearTimeout(timeout);
-  }, [orders, syncToCloud]);
+    const savedPhone = localStorage.getItem('tini_customer_phone');
+    if (savedPhone) setCustomerPhone(savedPhone);
+
+    const savedRole = localStorage.getItem('tini_role');
+    if (savedRole) {
+      setRole(savedRole as Role);
+      setActiveTab(savedRole === 'ADMIN' ? 'dashboard' : 'orders'); // Default to tracking for customer
+    }
+
+    setTimeout(() => {
+      setShowSplash(false);
+      if (!savedRole) setShowWelcome(true);
+    }, 2000);
+  }, [initializeSupabase]);
 
   const handleAdminLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -433,40 +476,63 @@ export default function App() {
     } else {
       setRole(selectedRole);
       localStorage.setItem('tini_role', selectedRole);
-      setActiveTab('add');
+      setActiveTab('orders'); // Langsung ke pelacakan
     }
   };
 
   const handleLogout = () => {
     setRole(null);
+    setCustomerPhone('');
     localStorage.removeItem('tini_role');
+    localStorage.removeItem('tini_customer_phone');
     setShowAdminLogin(false);
     setShowWelcome(true);
   };
 
-  const addOrder = (newOrder: Order, notify: boolean = true) => {
+  const addOrder = async (newOrder: Order) => {
     setOrders(prev => [newOrder, ...prev]);
-    if (notify) {
-      playNotificationSound();
-      setToast({ message: `Order ${newOrder.notaNumber} berhasil didaftarkan ke Database Online!`, type: 'success' });
-      setTimeout(() => setToast(null), 5000);
+    playNotificationSound();
+    setToast({ message: "Mendaftarkan order ke Cloud...", type: 'info' });
+
+    const success = await upsertOrderToSupabase(newOrder);
+    if (success) {
+      setToast({ message: `Order ${newOrder.notaNumber} Berhasil Terdaftar!`, type: 'success' });
+      setActiveTab('orders'); // Setelah order berhasil, pindah ke pelacakan
+    } else {
+      setToast({ message: "Gagal simpan ke Cloud, tersimpan lokal.", type: 'info' });
     }
+    setTimeout(() => setToast(null), 5000);
   };
 
-  const updateOrderStatus = (id: string, newStatus: OrderStatus) => {
+  const updateOrderStatus = async (id: string, newStatus: OrderStatus) => {
     const order = orders.find(o => o.id === id);
     if (!order) return;
-    setOrders(prev => prev.map(o => o.id === id ? { ...o, status: newStatus } : o));
-    if (selectedOrder?.id === id) {
-      setSelectedOrder(prev => prev ? { ...prev, status: newStatus } : null);
+    
+    const updatedOrder = { ...order, status: newStatus };
+    setOrders(prev => prev.map(o => o.id === id ? updatedOrder : o));
+    if (selectedOrder?.id === id) setSelectedOrder(updatedOrder);
+
+    const success = await upsertOrderToSupabase(updatedOrder);
+    if (success) {
+        setToast({ message: `Status diperbarui ke ${newStatus}`, type: 'success' });
     }
-    playNotificationSound();
-    let body = `Status laundry Anda sekarang: ${newStatus}`;
-    if (newStatus === 'Proses') body = `Laundry ${order.customerName} sedang dalam PROSES. 🧺`;
-    else if (newStatus === 'Selesai') body = `Laundry ${order.customerName} sudah SELESAI ✅ Total: ${formatIDR(order.totalPrice)}`;
-    showPushNotification(`Update Order: ${order.notaNumber}`, body);
-    setToast({ message: `Status order ${order.notaNumber} diubah ke ${newStatus}`, type: 'success' });
     setTimeout(() => setToast(null), 4000);
+  };
+
+  const handleDeleteOrder = async (id: string) => {
+    const order = orders.find(o => o.id === id);
+    if (!order) return;
+
+    setOrders(prev => prev.filter(o => o.id !== id));
+    
+    const success = await deleteOrderFromSupabase(id);
+    if (success) {
+      setToast({ message: `Pesanan ${order.notaNumber} telah dihapus.`, type: 'danger' });
+    } else {
+      setToast({ message: "Gagal menghapus dari Cloud.", type: 'danger' });
+      initializeSupabase();
+    }
+    setTimeout(() => setToast(null), 5000);
   };
 
   const stats = useMemo(() => {
@@ -514,32 +580,15 @@ export default function App() {
     return result;
   }, [orders, role, customerPhone, searchQuery, statusFilter, serviceFilter, startDate, endDate]);
 
-  const filterCounts = useMemo(() => {
-    let baseOrders = role === 'CUSTOMER' ? orders.filter(o => o.customerPhone === customerPhone) : orders;
+  const customerStats = useMemo(() => {
+    if (role !== 'CUSTOMER') return null;
+    const myOrders = orders.filter(o => o.customerPhone === customerPhone);
     return {
-      'Semua': baseOrders.length,
-      'Baru': baseOrders.filter(o => o.status === 'Baru').length,
-      'Proses': baseOrders.filter(o => o.status === 'Proses').length,
-      'Selesai': baseOrders.filter(o => o.status === 'Selesai').length,
+      total: myOrders.length,
+      active: myOrders.filter(o => o.status !== 'Selesai').length,
+      done: myOrders.filter(o => o.status === 'Selesai').length,
     };
   }, [orders, role, customerPhone]);
-
-  const exportToCSV = () => {
-    const dataToExport = filteredOrders;
-    if (dataToExport.length === 0) {
-      setToast({ message: "Tidak ada data untuk diekspor", type: 'info' });
-      return;
-    }
-    const headers = ["No Nota", "Tanggal", "Pelanggan", "Layanan", "Total", "Status"];
-    const rows = dataToExport.map(o => [o.notaNumber, new Date(o.createdAt).toLocaleDateString('id-ID'), o.customerName, o.serviceType, o.totalPrice, o.status]);
-    const csvContent = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `Laundry_Data_Ibu_Tini.csv`);
-    link.click();
-  };
 
   if (showSplash) {
     return (
@@ -550,82 +599,107 @@ export default function App() {
     );
   }
 
-  // --- Premium Welcome View ---
   if (showWelcome) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-gradient-to-br from-blue-50/50 to-white">
-        <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-100/40 rounded-full blur-[120px]"></div>
-        <div className="absolute bottom-[-10%] left-[-10%] w-[30%] h-[30%] bg-blue-100/30 rounded-full blur-[100px]"></div>
+      <div className="min-h-screen relative overflow-hidden bg-[#f0f9ff]">
+        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-100/50 rounded-full blur-[120px] animate-pulse"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-100/40 rounded-full blur-[100px]"></div>
 
-        <div className="max-w-6xl w-full grid grid-cols-1 md:grid-cols-2 gap-12 items-center z-10 p-6">
-          <div className="space-y-8 text-center md:text-left animate-slide-in-left">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600/10 text-blue-600 rounded-full border border-blue-100 font-bold text-xs uppercase tracking-widest shadow-sm">
-              <Sparkles className="w-4 h-4" /> Higienis & Terpercaya
-            </div>
-            <h1 className="text-5xl md:text-7xl lg:text-8xl font-black text-gray-900 tracking-tighter leading-[0.9]">
-              Solusi <span className="text-blue-600">Bersih</span> <br /> Tanpa Ribet.
-            </h1>
-            <p className="text-gray-600 text-lg md:text-xl leading-relaxed max-w-lg mx-auto md:mx-0 font-medium">
-              Biarkan Ibu Tini yang menangani tumpukan cucian Anda. Pakaian kembali bersih, wangi, dan rapi seperti baru.
-            </p>
-            
-            <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start pt-4">
-              <button 
-                onClick={() => setShowWelcome(false)}
-                className="group flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-700 text-white px-10 py-5 rounded-2xl font-black text-xl transition-all shadow-xl shadow-blue-200 active:scale-95"
-              >
-                Mulai Sekarang <ArrowRight className="group-hover:translate-x-1 transition-transform" />
-              </button>
-              <a 
-                href="https://wa.me/6285695014434" 
-                target="_blank"
-                className="flex items-center justify-center gap-3 bg-white border-2 border-gray-100 hover:border-blue-600 hover:text-blue-600 px-10 py-5 rounded-2xl font-bold text-xl transition-all shadow-sm"
-              >
-                <MessageCircle className="w-6 h-6 text-green-500" /> WhatsApp
-              </a>
-            </div>
-
-            <div className="grid grid-cols-3 gap-6 pt-8 border-t border-gray-100 max-w-md mx-auto md:mx-0">
-              <div>
-                <p className="text-2xl font-black text-blue-600 tracking-tighter">24H</p>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Express Service</p>
-              </div>
-              <div className="border-x border-gray-100 px-6">
-                <p className="text-2xl font-black text-blue-600 tracking-tighter">Free</p>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Pick & Up*</p>
-              </div>
-              <div className="pl-2">
-                <p className="text-2xl font-black text-blue-600 tracking-tighter">100%</p>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Puas & Wangi</p>
-              </div>
-            </div>
+        <div className="relative z-10 max-w-7xl mx-auto px-6 pt-12 pb-24 min-h-screen flex flex-col">
+          <div className="flex items-center gap-2 mb-20 animate-fade-in">
+             <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-200">
+                <WashingMachine className="w-6 h-6" />
+             </div>
+             <span className="text-xl font-black tracking-tighter text-gray-900">LAUNDRY IBU TINI</span>
           </div>
 
-          <div className="relative animate-fade-in flex justify-center items-center">
-            <div className="relative w-72 h-72 md:w-[450px] md:h-[450px]">
-              <div className="absolute inset-0 border-[1px] border-blue-200/50 rounded-full animate-spin-slow"></div>
-              <div className="absolute inset-8 border-[1px] border-dashed border-blue-300/30 rounded-full animate-spin-reverse"></div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center flex-1">
+            <div className="space-y-10 animate-slide-in-left">
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600/10 text-blue-600 rounded-full border border-blue-100 font-black text-[10px] uppercase tracking-widest">
+                <Sparkles className="w-3 h-3" /> Digital Laundry Experience
+              </div>
               
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-48 h-48 md:w-80 md:h-80 bg-white rounded-[40px] shadow-2xl flex items-center justify-center transform rotate-6 hover:rotate-0 transition-transform duration-500 group overflow-hidden border border-blue-50">
-                  <WashingMachine className="w-24 h-24 md:w-40 md:h-40 text-blue-600 group-hover:scale-110 transition-transform duration-500" />
-                  <div className="absolute bottom-0 left-0 w-full h-1/4 bg-blue-600/5 backdrop-blur-md flex items-center justify-center">
-                    <Waves className="w-12 h-12 text-blue-200" />
-                  </div>
-                </div>
+              <h1 className="text-6xl md:text-8xl font-black text-gray-900 leading-[0.9] tracking-tighter">
+                Cucian <span className="text-blue-600">Bersih</span>,<br />Hidup Tenang.
+              </h1>
+              
+              <p className="text-lg md:text-xl text-gray-600 font-medium max-w-lg leading-relaxed">
+                Manajemen laundry cerdas untuk Ibu Tini. Lacak pesanan secara real-time, cetak nota otomatis, dan layanan WhatsApp terintegrasi.
+              </p>
+
+              <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                <button 
+                  onClick={() => setShowWelcome(false)}
+                  className="px-10 py-5 bg-blue-600 hover:bg-blue-700 text-white rounded-[2rem] font-black text-xl transition-all shadow-xl shadow-blue-200 hover:-translate-y-1 active:scale-95 flex items-center justify-center gap-3"
+                >
+                  Mulai Sekarang <ArrowRight className="w-6 h-6" />
+                </button>
+                <a 
+                  href="https://wa.me/6285695014434"
+                  target="_blank"
+                  className="px-10 py-5 bg-white border-2 border-gray-100 hover:border-blue-600 text-gray-700 hover:text-blue-600 rounded-[2rem] font-bold text-xl transition-all flex items-center justify-center gap-3"
+                >
+                  <MessageCircle className="w-6 h-6 text-green-500" /> WhatsApp
+                </a>
               </div>
 
-              <div className="absolute top-10 right-0 p-4 bg-white rounded-2xl shadow-xl flex items-center gap-3 animate-bounce border border-gray-50" style={{animationDuration: '3s'}}>
-                <div className="p-2 bg-green-100 rounded-xl"><CheckCircle2 className="w-5 h-5 text-green-600" /></div>
-                <p className="text-xs font-black text-gray-700 leading-none">Pakaian <br/> Higienis</p>
+              <div className="grid grid-cols-3 gap-4 pt-10 border-t border-gray-100">
+                <div className="space-y-2">
+                  <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600"><ZapIcon className="w-4 h-4" /></div>
+                  <p className="text-[10px] font-black uppercase text-gray-400">Express</p>
+                  <p className="font-bold text-gray-800">24 Jam Selesai</p>
+                </div>
+                <div className="space-y-2">
+                  <div className="w-8 h-8 bg-green-50 rounded-lg flex items-center justify-center text-green-600"><ShieldCheck className="w-4 h-4" /></div>
+                  <p className="text-[10px] font-black uppercase text-gray-400">Higienis</p>
+                  <p className="font-bold text-gray-800">Anti Bakteri</p>
+                </div>
+                <div className="space-y-2">
+                  <div className="w-8 h-8 bg-purple-50 rounded-lg flex items-center justify-center text-purple-600"><Star className="w-4 h-4" /></div>
+                  <p className="text-[10px] font-black uppercase text-gray-400">Rating</p>
+                  <p className="font-bold text-gray-800">Bintang 5</p>
+                </div>
               </div>
-              <div className="absolute bottom-20 left-[-20px] p-4 bg-white rounded-2xl shadow-xl flex items-center gap-3 animate-bounce border border-gray-50" style={{animationDuration: '4.5s', animationDelay: '0.8s'}}>
-                <div className="p-2 bg-orange-100 rounded-xl"><Clock className="w-5 h-5 text-orange-600" /></div>
-                <p className="text-xs font-black text-gray-700 leading-none">Express <br/> Tercepat</p>
-              </div>
-              <div className="absolute bottom-4 right-10 p-4 bg-white rounded-2xl shadow-xl flex items-center gap-3 animate-bounce border border-gray-50" style={{animationDuration: '5s', animationDelay: '1.2s'}}>
-                <div className="p-2 bg-blue-100 rounded-xl"><Droplets className="w-5 h-5 text-blue-600" /></div>
-                <p className="text-xs font-black text-gray-700 leading-none">Aroma <br/> Tahan Lama</p>
+            </div>
+
+            <div className="relative animate-zoom-in hidden lg:block">
+              <div className="relative w-full aspect-square max-w-md mx-auto">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-200/30 rounded-full animate-bounce" style={{animationDuration: '4s'}}></div>
+                <div className="absolute bottom-10 left-0 w-24 h-24 bg-blue-100/40 rounded-full animate-bounce" style={{animationDuration: '6s', animationDelay: '1s'}}></div>
+                
+                <div className="absolute inset-0 bg-white rounded-[3rem] shadow-2xl border border-blue-50 rotate-3 overflow-hidden group hover:rotate-0 transition-transform duration-700">
+                   <div className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-br from-blue-600 to-blue-800 p-10 text-white">
+                      <WashingMachine className="w-20 h-20 opacity-20 absolute top-10 right-10 animate-spin-slow" />
+                      <Waves className="w-16 h-16 mb-4" />
+                      <h3 className="text-3xl font-black">Laundry Pro</h3>
+                      <p className="opacity-80">High performance system</p>
+                   </div>
+                   <div className="absolute bottom-0 left-0 w-full h-1/2 p-10 space-y-4">
+                      <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                         <div className="h-full w-2/3 bg-blue-600 rounded-full animate-pulse"></div>
+                      </div>
+                      <div className="flex justify-between items-center">
+                         <span className="text-xs font-bold text-gray-400">SINKRONISASI CLOUD</span>
+                         <span className="text-xs font-black text-blue-600">80% AKTIF</span>
+                      </div>
+                      <div className="pt-4 flex gap-2">
+                         <div className="w-8 h-8 rounded-full bg-gray-100"></div>
+                         <div className="w-8 h-8 rounded-full bg-gray-100"></div>
+                         <div className="w-8 h-8 rounded-full bg-gray-100"></div>
+                      </div>
+                   </div>
+                </div>
+
+                <div className="absolute -top-6 -left-6 w-20 h-20 bg-blue-600 rounded-3xl flex items-center justify-center text-white shadow-xl shadow-blue-200 -rotate-12">
+                   <Droplets className="w-10 h-10" />
+                </div>
+                <div className="absolute -bottom-6 -right-6 px-6 py-4 bg-white rounded-2xl shadow-xl border border-gray-50 flex items-center gap-3">
+                   <div className="p-2 bg-green-100 rounded-xl"><CheckCircle2 className="w-6 h-6 text-green-600" /></div>
+                   <div>
+                      <p className="text-[10px] font-black text-gray-400 uppercase">Status</p>
+                      <p className="font-black text-gray-800">READY TO CLEAN</p>
+                   </div>
+                </div>
               </div>
             </div>
           </div>
@@ -674,13 +748,18 @@ export default function App() {
   if (role === 'CUSTOMER' && !customerPhone) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6">
-        <Card className="max-w-md w-full p-10">
-          <button onClick={() => setRole(null)} className="mb-6 text-sm text-blue-600 flex items-center gap-1 hover:underline"><X className="w-4 h-4" /> Batal</button>
-          <h2 className="text-2xl font-bold mb-8">Lacak Pesanan</h2>
-          <form onSubmit={(e) => { e.preventDefault(); const p = (e.target as any).phone.value; setCustomerPhone(p); localStorage.setItem('tini_customer_phone', p); }}>
+        <Card className="max-w-md w-full p-10 shadow-2xl">
+          <button onClick={() => setRole(null)} className="mb-6 text-sm text-blue-600 flex items-center gap-1 hover:underline"><X className="w-4 h-4" /> Kembali</button>
+          <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 mb-6 mx-auto"><SearchCheck className="w-8 h-8" /></div>
+          <h2 className="text-2xl font-black text-center mb-2">Order</h2>
+          <p className="text-center text-gray-500 text-sm mb-8">Masukkan nomor HP WhatsApp yang digunakan saat mendaftar untuk melihat pesanan.</p>
+          <form onSubmit={(e) => { e.preventDefault(); const p = (e.target as any).phone.value; setCustomerPhone(p); localStorage.setItem('tini_customer_phone', p); initializeSupabase(); }}>
             <div className="space-y-6">
-              <input name="phone" required type="tel" className="w-full px-5 py-4 border border-blue-100 rounded-2xl outline-none" placeholder="Nomor HP WhatsApp" />
-              <Button type="submit" className="w-full py-4">Lanjutkan <ArrowRight className="w-5 h-5" /></Button>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Nomor HP WhatsApp</label>
+                <input name="phone" required type="tel" className="w-full px-5 py-4 border border-blue-100 rounded-2xl outline-none bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all font-bold" placeholder="Contoh: 081234567890" />
+              </div>
+              <Button type="submit" className="w-full py-4 text-lg">Lihat Pesanan Saya <ArrowRight className="w-5 h-5" /></Button>
             </div>
           </form>
         </Card>
@@ -691,7 +770,7 @@ export default function App() {
   return (
     <div className={`min-h-screen ${isDarkMode ? 'dark text-white' : 'bg-transparent'}`}>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      <OrderModal order={selectedOrder} onClose={() => setSelectedOrder(null)} isAdmin={role === 'ADMIN'} onUpdateStatus={updateOrderStatus} />
+      <OrderModal order={selectedOrder} onClose={() => setSelectedOrder(null)} isAdmin={role === 'ADMIN'} onUpdateStatus={updateOrderStatus} onDeleteOrder={handleDeleteOrder} />
       
       <div className="hidden md:fixed md:inset-y-0 md:flex md:w-64 md:flex-col">
         <div className="flex flex-1 flex-col bg-blue-700 p-8 text-white">
@@ -705,28 +784,36 @@ export default function App() {
               </>
             ) : (
               <>
+                <SidebarLink icon={Activity} label="Status Order" active={activeTab === 'orders'} onClick={() => setActiveTab('orders')} />
                 <SidebarLink icon={PlusCircle} label="Buat Order" active={activeTab === 'add'} onClick={() => setActiveTab('add')} />
-                <SidebarLink icon={History} label="Riwayat Saya" active={activeTab === 'orders'} onClick={() => setActiveTab('orders')} />
               </>
             )}
           </nav>
-          <button onClick={handleLogout} className="flex items-center gap-3 text-red-100 font-bold hover:text-white mt-auto"><LogOut className="w-5 h-5" /> Keluar</button>
+          <div className="mt-auto space-y-4">
+            {role === 'CUSTOMER' && (
+              <div className="bg-blue-600/50 p-4 rounded-2xl border border-blue-500/30">
+                <p className="text-[10px] font-black text-blue-200 uppercase mb-2">Login Sebagai</p>
+                <p className="font-bold truncate text-sm">{customerPhone}</p>
+              </div>
+            )}
+            <button onClick={handleLogout} className="flex items-center gap-3 text-red-100 font-bold hover:text-white"><LogOut className="w-5 h-5" /> Keluar</button>
+          </div>
         </div>
       </div>
 
       <div className="md:pl-64 flex flex-col flex-1">
         <header className="sticky top-0 z-40 bg-white/60 backdrop-blur-xl border-b p-6 flex items-center justify-between">
-          <h2 className="text-2xl font-black text-gray-800 tracking-tight">{role === 'ADMIN' ? 'Control Panel Admin' : 'Laundry Anda'}</h2>
+          <div>
+            <h2 className="text-2xl font-black text-gray-800 tracking-tight">
+              {role === 'ADMIN' ? 'Control Panel Admin' : 'Order Tracking'}
+            </h2>
+            {role === 'CUSTOMER' && <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mt-1">Real-time status tracking active</p>}
+          </div>
           <div className="flex items-center gap-4">
-            {/* Cloud Status Indicator */}
-            <div className="flex items-center gap-2 px-3 py-1 bg-white/50 border rounded-full text-[10px] font-black uppercase tracking-widest text-gray-500">
-              {cloudStatus === 'syncing' && <RefreshCw className="w-3 h-3 animate-spin text-blue-600" />}
-              {cloudStatus === 'connected' && <Cloud className="w-3 h-3 text-green-600 pulse" />}
-              {cloudStatus === 'error' && <CloudOff className="w-3 h-3 text-red-600" />}
-              {cloudStatus === 'idle' && <Database className="w-3 h-3" />}
-              <span className="hidden sm:inline">{cloudStatus === 'connected' ? 'Database Online' : cloudStatus}</span>
+            <div className={`flex items-center gap-2 px-3 py-1 border rounded-full text-[10px] font-black uppercase tracking-widest ${dbStatus === 'live' ? 'bg-green-50 border-green-200 text-green-600' : 'bg-red-50 border-red-200 text-red-600'}`}>
+              <Zap className={`w-3 h-3 ${dbStatus === 'live' ? 'pulse' : ''}`} />
+              <span className="hidden sm:inline">{dbStatus === 'live' ? 'Live' : 'Offline'}</span>
             </div>
-            
             <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-3 bg-white shadow-sm border rounded-xl">{isDarkMode ? <Sun className="text-orange-500" /> : <Moon className="text-blue-600" />}</button>
             <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-black">{role === 'ADMIN' ? 'A' : 'P'}</div>
           </div>
@@ -741,21 +828,6 @@ export default function App() {
                 <StatCard label="Dalam Proses" value={stats.process} icon={Clock} color="orange" />
                 <StatCard label="Total Order" value={orders.length} icon={Package} color="purple" />
               </div>
-
-              {/* Database Connection Info Card */}
-              <Card className="bg-gradient-to-r from-blue-600 to-blue-800 text-white border-none">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-lg font-bold flex items-center gap-2"><Database className="w-5 h-5" /> Database Cloud Aktif</h3>
-                    <p className="text-xs opacity-70 mt-1">Data anda tersinkronisasi otomatis secara online.</p>
-                    <div className="mt-4 flex items-center gap-2">
-                        <span className="text-[10px] bg-white/20 px-2 py-1 rounded font-mono">BIN ID: {cloudBinId || 'Connecting...'}</span>
-                        <button onClick={() => syncToCloud(orders)} className="text-[10px] bg-white text-blue-600 px-3 py-1 rounded font-bold hover:bg-gray-100 transition-colors">SYNC NOW</button>
-                    </div>
-                  </div>
-                  <Cloud className="w-16 h-16 opacity-20" />
-                </div>
-              </Card>
 
               <Card className="h-[400px]">
                 <h3 className="text-xl font-bold mb-6">Laporan Pendapatan Mingguan</h3>
@@ -773,58 +845,105 @@ export default function App() {
             </div>
           )}
 
-          {activeTab === 'add' && <OrderForm role={role} prefilledPhone={customerPhone} onAdd={addOrder} />}
+          {activeTab === 'add' && <OrderForm role={role} onAdd={addOrder} prefilledPhone={customerPhone} />}
 
           {activeTab === 'orders' && (
-            <div className="space-y-6">
-              <div className="flex flex-col xl:flex-row gap-4 justify-between">
-                <div className="flex items-center gap-4 flex-1">
+            <div className="space-y-8">
+              {role === 'CUSTOMER' && customerStats && (
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="bg-blue-600 rounded-[2rem] p-6 text-white shadow-xl shadow-blue-100 flex flex-col justify-between">
+                    <p className="text-[10px] font-black uppercase opacity-60">Total Pesanan</p>
+                    <p className="text-4xl font-black">{customerStats.total}</p>
+                  </div>
+                  <div className="bg-white rounded-[2rem] p-6 border shadow-sm flex flex-col justify-between">
+                    <p className="text-[10px] font-black text-gray-400 uppercase">Sedang Dicuci</p>
+                    <p className="text-4xl font-black text-orange-500">{customerStats.active}</p>
+                  </div>
+                  <div className="bg-green-50 rounded-[2rem] p-6 border border-green-100 flex flex-col justify-between">
+                    <p className="text-[10px] font-black text-green-600 uppercase">Selesai</p>
+                    <p className="text-4xl font-black text-green-700">{customerStats.done}</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex flex-col xl:flex-row gap-4 justify-between items-center">
+                <div className="flex items-center gap-4 flex-1 w-full">
                   <div className="relative flex-1">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-                    <input type="text" placeholder="Cari Pelanggan atau No Nota..." className="w-full pl-12 pr-6 py-4 bg-white border border-gray-100 rounded-2xl outline-none" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                    <input type="text" placeholder={role === 'ADMIN' ? "Cari Pelanggan atau No Nota..." : "Cari di daftar pesanan Anda..."} className="w-full pl-12 pr-6 py-4 bg-white border border-gray-100 rounded-2xl outline-none shadow-sm focus:ring-2 focus:ring-blue-100 transition-all" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
                   </div>
-                  {role === 'ADMIN' && <button onClick={exportToCSV} className="p-4 bg-white border border-gray-100 rounded-2xl text-blue-600 hover:bg-blue-50"><Download /></button>}
+                  {role === 'CUSTOMER' && (
+                    <button onClick={() => initializeSupabase()} className="p-4 bg-white border rounded-2xl hover:bg-gray-50 text-blue-600 shadow-sm transition-all active:scale-95" title="Refresh Data">
+                      <RefreshCcw className={`w-5 h-5 ${dbStatus === 'syncing' ? 'animate-spin' : ''}`} />
+                    </button>
+                  )}
                 </div>
-                <div className="flex items-center gap-4 bg-white p-2 rounded-2xl border border-gray-100 overflow-x-auto whitespace-nowrap">
-                  <Calendar className="w-5 h-5 text-blue-600 ml-2" />
-                  <input type="date" className="bg-transparent text-xs font-bold outline-none" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-                  <span className="text-gray-400">s/d</span>
-                  <input type="date" className="bg-transparent text-xs font-bold outline-none" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-                </div>
-              </div>
-
-              <div className="flex gap-2 overflow-x-auto pb-2">
-                {['Semua', 'Baru', 'Proses', 'Selesai'].map((s: any) => (
-                  <button key={s} onClick={() => setStatusFilter(s)} className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${statusFilter === s ? 'bg-blue-600 border-blue-600 text-white shadow-lg' : 'bg-white text-gray-500'}`}>
-                    {s} ({filterCounts[s as keyof typeof filterCounts]})
-                  </button>
-                ))}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredOrders.map(order => (
-                  <Card key={order.id} className="cursor-pointer hover:scale-[1.02] transition-all border-none bg-white shadow-sm hover:shadow-xl" onClick={() => setSelectedOrder(order)}>
+                  <Card key={order.id} className="cursor-pointer hover:scale-[1.02] transition-all border-none bg-white shadow-sm hover:shadow-xl group" onClick={() => setSelectedOrder(order)}>
                     <div className="flex justify-between items-start mb-4">
                       <div>
-                        <p className="text-[10px] font-black text-gray-300 uppercase mb-1">{order.notaNumber}</p>
+                        <p className="text-[10px] font-black text-gray-300 uppercase mb-1 tracking-widest">{order.notaNumber}</p>
                         <h4 className="text-xl font-bold text-gray-800">{order.customerName}</h4>
                       </div>
                       <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black text-white uppercase ${order.status === 'Baru' ? 'bg-blue-600' : order.status === 'Proses' ? 'bg-orange-500' : 'bg-green-600'}`}>{order.status}</span>
                     </div>
+                    
+                    {/* Customer-Specific Progress Stepper */}
+                    {role === 'CUSTOMER' && (
+                      <div className="mb-6 pt-2">
+                        <div className="flex justify-between items-center relative">
+                          <div className="absolute top-1/2 -translate-y-1/2 left-0 right-0 h-0.5 bg-gray-100 z-0"></div>
+                          <div className={`absolute top-1/2 -translate-y-1/2 left-0 h-0.5 bg-blue-500 z-0 transition-all duration-1000`} style={{ width: order.status === 'Baru' ? '0%' : order.status === 'Proses' ? '50%' : '100%' }}></div>
+                          
+                          <div className={`w-6 h-6 rounded-full z-10 flex items-center justify-center border-2 bg-white ${order.status !== 'Baru' ? 'border-blue-500 text-blue-500' : 'border-blue-500 bg-blue-500 text-white'}`}>
+                            {order.status === 'Baru' ? <div className="w-2 h-2 bg-white rounded-full"></div> : <CheckCircle2 className="w-3 h-3" />}
+                          </div>
+                          <div className={`w-6 h-6 rounded-full z-10 flex items-center justify-center border-2 bg-white ${order.status === 'Selesai' ? 'border-blue-500 text-blue-500' : order.status === 'Proses' ? 'border-orange-500 bg-orange-500 text-white' : 'border-gray-200 text-gray-300'}`}>
+                            {order.status === 'Proses' ? <RefreshCcw className="w-3 h-3 animate-spin" /> : order.status === 'Selesai' ? <CheckCircle2 className="w-3 h-3" /> : <div className="w-1.5 h-1.5 bg-gray-200 rounded-full"></div>}
+                          </div>
+                          <div className={`w-6 h-6 rounded-full z-10 flex items-center justify-center border-2 bg-white ${order.status === 'Selesai' ? 'border-green-500 bg-green-500 text-white' : 'border-gray-200 text-gray-300'}`}>
+                            {order.status === 'Selesai' ? <CheckCircle2 className="w-3 h-3" /> : <div className="w-1.5 h-1.5 bg-gray-200 rounded-full"></div>}
+                          </div>
+                        </div>
+                        <div className="flex justify-between mt-2 text-[8px] font-black uppercase text-gray-400">
+                          <span>Diterima</span>
+                          <span>Diproses</span>
+                          <span>Selesai</span>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="space-y-2 mb-6">
-                      <p className="text-sm font-bold text-gray-500 flex items-center gap-2"><Shirt className="w-4 h-4" /> {order.serviceType}</p>
-                      <p className="text-sm font-bold text-gray-500 flex items-center gap-2"><Clock className="w-4 h-4" /> {new Date(order.createdAt).toLocaleDateString('id-ID')}</p>
+                      <p className="text-sm font-bold text-gray-500 flex items-center gap-2"><Shirt className="w-4 h-4 text-blue-300" /> {order.serviceType}</p>
+                      <p className="text-sm font-bold text-gray-500 flex items-center gap-2"><Clock className="w-4 h-4 text-blue-300" /> {new Date(order.createdAt).toLocaleDateString('id-ID', {day: 'numeric', month: 'long'})}</p>
                     </div>
+                    
                     <div className="flex items-center justify-between pt-4 border-t border-gray-50">
                       <p className="text-xl font-black text-blue-700">{formatIDR(order.totalPrice)}</p>
-                      <ChevronRight className="text-gray-300" />
+                      <div className="flex items-center gap-2 text-blue-600 font-bold text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+                         DETAIL <ChevronRight className="w-4 h-4" />
+                      </div>
                     </div>
                   </Card>
                 ))}
+                
                 {filteredOrders.length === 0 && (
-                  <div className="col-span-full py-20 text-center">
-                    <FilterX className="w-16 h-16 text-gray-200 mx-auto mb-4" />
-                    <p className="text-gray-400 font-bold">Tidak ada pesanan ditemukan</p>
+                  <div className="col-span-full py-24 text-center">
+                    <div className="w-24 h-24 bg-gray-50 rounded-[2.5rem] flex items-center justify-center mx-auto mb-6 text-gray-200 border">
+                      <FilterX className="w-12 h-12" />
+                    </div>
+                    <h3 className="text-xl font-black text-gray-800">Tidak ada pesanan</h3>
+                    <p className="text-gray-400 font-medium max-w-xs mx-auto mt-2">
+                      {role === 'CUSTOMER' ? 'Anda belum memiliki riwayat pesanan dengan nomor ini.' : 'Belum ada data pesanan yang sesuai filter.'}
+                    </p>
+                    {role === 'CUSTOMER' && (
+                      <Button onClick={() => setActiveTab('add')} className="mt-8 px-8 py-4 bg-blue-600 rounded-2xl mx-auto">
+                        BUAT PESANAN PERTAMA <PlusCircle className="w-5 h-5" />
+                      </Button>
+                    )}
                   </div>
                 )}
               </div>
@@ -833,30 +952,42 @@ export default function App() {
         </main>
       </div>
 
-      <div className="md:hidden fixed bottom-6 left-6 right-6 h-16 bg-white/80 backdrop-blur-2xl rounded-3xl border flex justify-around items-center px-4 shadow-2xl z-50">
-        <button onClick={() => setActiveTab('dashboard')} className={`p-3 rounded-2xl ${activeTab === 'dashboard' ? 'text-blue-600 bg-blue-50' : 'text-gray-400'}`}><LayoutDashboard /></button>
-        <button onClick={() => setActiveTab('orders')} className={`p-3 rounded-2xl ${activeTab === 'orders' ? 'text-blue-600 bg-blue-50' : 'text-gray-400'}`}><ClipboardList /></button>
-        <button onClick={() => setActiveTab('add')} className={`p-3 rounded-2xl ${activeTab === 'add' ? 'text-blue-600 bg-blue-50' : 'text-gray-400'}`}><PlusCircle /></button>
-        <button onClick={handleLogout} className="p-3 text-red-400"><LogOut /></button>
+      <div className="md:hidden fixed bottom-6 left-6 right-6 h-18 bg-white/90 backdrop-blur-2xl rounded-[2.5rem] border shadow-2xl z-50 flex items-center px-4 justify-around">
+        <button onClick={() => setActiveTab(role === 'ADMIN' ? 'dashboard' : 'orders')} className={`flex flex-col items-center gap-1 transition-all ${activeTab === (role === 'ADMIN' ? 'dashboard' : 'orders') ? 'text-blue-600' : 'text-gray-400'}`}>
+          {role === 'ADMIN' ? <LayoutDashboard /> : <Activity />}
+          <span className="text-[10px] font-black uppercase tracking-tighter">{role === 'ADMIN' ? 'Beranda' : 'Lacak'}</span>
+        </button>
+        {role === 'ADMIN' && (
+          <button onClick={() => setActiveTab('orders')} className={`flex flex-col items-center gap-1 transition-all ${activeTab === 'orders' ? 'text-blue-600' : 'text-gray-400'}`}>
+            <ClipboardList />
+            <span className="text-[10px] font-black uppercase tracking-tighter">Daftar</span>
+          </button>
+        )}
+        <button onClick={() => setActiveTab('add')} className={`flex flex-col items-center gap-1 transition-all ${activeTab === 'add' ? 'text-blue-600' : 'text-gray-400'}`}>
+          <PlusCircle />
+          <span className="text-[10px] font-black uppercase tracking-tighter">Buat</span>
+        </button>
+        <button onClick={handleLogout} className="flex flex-col items-center gap-1 text-red-400">
+          <LogOut />
+          <span className="text-[10px] font-black uppercase tracking-tighter">Logout</span>
+        </button>
       </div>
     </div>
   );
 }
 
-// --- Sidebar Helper ---
 function SidebarLink({ icon: Icon, label, active, onClick }: any) {
   return (
-    <button onClick={onClick} className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all ${active ? 'bg-white text-blue-700 font-black shadow-xl' : 'text-blue-100 hover:bg-white/10 font-bold'}`}>
+    <button onClick={onClick} className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all ${active ? 'bg-white text-blue-700 font-black shadow-xl scale-[1.02]' : 'text-blue-100 hover:bg-white/10 font-bold'}`}>
       <Icon className="w-5 h-5" /><span>{label}</span>
     </button>
   );
 }
 
-// --- Stat Card Helper ---
 function StatCard({ label, value, icon: Icon, color }: any) {
-  const colors: any = { blue: 'bg-blue-600', green: 'bg-green-600', orange: 'bg-orange-600', purple: 'bg-purple-600' };
+  const colors: any = { blue: 'bg-blue-600 shadow-blue-100', green: 'bg-green-600 shadow-green-100', orange: 'bg-orange-600 shadow-orange-100', purple: 'bg-purple-600 shadow-purple-100' };
   return (
-    <Card className="hover:scale-[1.03] transition-all">
+    <Card className="hover:scale-[1.03] transition-all border-none shadow-sm">
       <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white mb-4 ${colors[color]}`}><Icon className="w-5 h-5" /></div>
       <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{label}</p>
       <p className="text-2xl font-black text-gray-800 mt-1">{value}</p>
@@ -864,7 +995,6 @@ function StatCard({ label, value, icon: Icon, color }: any) {
   );
 }
 
-// --- Order Form Helper ---
 function OrderForm({ role, prefilledPhone, onAdd }: any) {
   const [formData, setFormData] = useState({
     customerName: '',
@@ -889,7 +1019,7 @@ function OrderForm({ role, prefilledPhone, onAdd }: any) {
       createdAt: new Date().toISOString(),
       estimatedFinishDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
     };
-    onAdd(newOrder, true);
+    onAdd(newOrder);
     setFormData({ customerName: '', customerPhone: prefilledPhone || '', customerAddress: '', weight: 0, serviceType: 'Cuci Setrika', specialRequest: '', deliveryMethod: 'Ambil Sendiri' });
   };
 
@@ -901,46 +1031,32 @@ function OrderForm({ role, prefilledPhone, onAdd }: any) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-1">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Nama Lengkap</label>
-              <input required className="w-full px-5 py-4 border border-blue-50 bg-gray-50/50 rounded-2xl outline-none" value={formData.customerName} onChange={(e) => setFormData({...formData, customerName: e.target.value})} placeholder="Contoh: Budi Santoso" />
+              <input required className="w-full px-5 py-4 border border-blue-50 bg-gray-50/50 rounded-2xl outline-none focus:bg-white transition-all font-bold" value={formData.customerName} onChange={(e) => setFormData({...formData, customerName: e.target.value})} placeholder="Contoh: Budi Santoso" />
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">No WhatsApp</label>
-              <input required className="w-full px-5 py-4 border border-blue-100 rounded-2xl outline-none" value={formData.customerPhone} onChange={(e) => setFormData({...formData, customerPhone: e.target.value})} placeholder="Contoh: 081234567890" />
+              <input required className="w-full px-5 py-4 border border-blue-50 bg-gray-50/50 rounded-2xl outline-none focus:bg-white transition-all font-bold" value={formData.customerPhone} onChange={(e) => setFormData({...formData, customerPhone: e.target.value})} placeholder="Contoh: 081234567890" />
             </div>
           </div>
           <div className="space-y-1">
             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Alamat Lengkap</label>
-            <textarea required rows={2} className="w-full px-5 py-4 border border-blue-100 rounded-2xl outline-none" value={formData.customerAddress} onChange={(e) => setFormData({...formData, customerAddress: e.target.value})} placeholder="Masukkan alamat untuk antar/jemput" />
+            <textarea required rows={2} className="w-full px-5 py-4 border border-blue-50 bg-gray-50/50 rounded-2xl outline-none focus:bg-white transition-all font-medium" value={formData.customerAddress} onChange={(e) => setFormData({...formData, customerAddress: e.target.value})} placeholder="Masukkan alamat untuk antar/jemput" />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-1">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Layanan</label>
-              <select className="w-full px-5 py-4 border border-blue-50 bg-gray-50/50 rounded-2xl outline-none font-bold" value={formData.serviceType} onChange={(e) => setFormData({...formData, serviceType: e.target.value as ServiceType})}>
+              <select className="w-full px-5 py-4 border border-blue-50 bg-gray-50/50 rounded-2xl outline-none focus:bg-white transition-all font-bold" value={formData.serviceType} onChange={(e) => setFormData({...formData, serviceType: e.target.value as ServiceType})}>
                 {Object.keys(SERVICE_PRICES).map(s => <option key={s} value={s}>{s} ({formatIDR(SERVICE_PRICES[s as ServiceType])})</option>)}
               </select>
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Berat (Kg) / Unit</label>
-              <input required type="number" min="0" step="0.1" className="w-full px-5 py-4 border border-blue-50 bg-gray-50/50 rounded-2xl outline-none font-black text-xl" value={formData.weight} onChange={(e) => setFormData({...formData, weight: parseFloat(e.target.value) || 0})} />
+              <input required type="number" min="0" step="0.1" className="w-full px-5 py-4 border border-blue-50 bg-gray-50/50 rounded-2xl outline-none font-black text-xl focus:bg-white transition-all" value={formData.weight} onChange={(e) => setFormData({...formData, weight: parseFloat(e.target.value) || 0})} />
             </div>
           </div>
-          
-          <div className="space-y-1">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Metode Pengiriman</label>
-            <div className="flex gap-4">
-              <button type="button" onClick={() => setFormData({...formData, deliveryMethod: 'Ambil Sendiri'})} className={`flex-1 py-4 rounded-2xl border-2 font-bold transition-all ${formData.deliveryMethod === 'Ambil Sendiri' ? 'border-blue-600 bg-blue-50 text-blue-600' : 'border-gray-100 text-gray-400'}`}>Ambil Sendiri</button>
-              <button type="button" onClick={() => setFormData({...formData, deliveryMethod: 'Antar/Jemput'})} className={`flex-1 py-4 rounded-2xl border-2 font-bold transition-all ${formData.deliveryMethod === 'Antar/Jemput' ? 'border-blue-600 bg-blue-50 text-blue-600' : 'border-gray-100 text-gray-400'}`}>Antar/Jemput</button>
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Catatan Khusus (Optional)</label>
-            <textarea rows={1} className="w-full px-5 py-4 border border-blue-50 bg-gray-50/50 rounded-2xl outline-none" value={formData.specialRequest} onChange={(e) => setFormData({...formData, specialRequest: e.target.value})} placeholder="Contoh: Jangan campur baju putih, setrika licin." />
-          </div>
-
-          <div className="p-6 bg-blue-600 rounded-3xl flex flex-col md:flex-row items-center justify-between text-white gap-6">
-            <div><p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80 mb-1">Total Tagihan</p><p className="text-4xl font-black">{formatIDR(total)}</p></div>
-            <Button type="submit" disabled={total <= 0} className="bg-white text-blue-600 hover:bg-gray-50 w-full md:w-auto px-10 py-4">DAFTARKAN SEKARANG</Button>
+          <div className="p-6 bg-blue-600 rounded-[2.5rem] flex flex-col md:flex-row items-center justify-between text-white gap-6 shadow-xl shadow-blue-100">
+            <div><p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80 mb-1">Estimasi Tagihan</p><p className="text-4xl font-black">{formatIDR(total)}</p></div>
+            <Button type="submit" disabled={total <= 0} className="bg-white text-blue-600 hover:bg-gray-50 w-full md:w-auto px-10 py-4 text-lg">DAFTARKAN SEKARANG</Button>
           </div>
         </form>
       </Card>

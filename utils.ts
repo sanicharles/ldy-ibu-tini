@@ -1,4 +1,7 @@
 
+import { supabase } from './supabase';
+import { Order } from './types';
+
 export const formatIDR = (amount: number): string => {
   return new Intl.NumberFormat('id-ID', {
     style: 'currency',
@@ -16,28 +19,26 @@ export const generateNotaNumber = (): string => {
 };
 
 export const playNotificationSound = () => {
-  const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-  
-  const playTone = (freq: number, start: number, duration: number) => {
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(freq, start);
-    
-    gain.gain.setValueAtTime(0, start);
-    gain.gain.linearRampToValueAtTime(0.2, start + 0.05);
-    gain.gain.exponentialRampToValueAtTime(0.001, start + duration);
-    
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-    
-    osc.start(start);
-    osc.stop(start + duration);
-  };
-
-  playTone(880, audioCtx.currentTime, 0.5);
-  playTone(1108.73, audioCtx.currentTime + 0.1, 0.5);
+  try {
+    const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const playTone = (freq: number, start: number, duration: number) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, start);
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(0.2, start + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + duration);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(start);
+      osc.stop(start + duration);
+    };
+    playTone(880, audioCtx.currentTime, 0.5);
+    playTone(1108.73, audioCtx.currentTime + 0.1, 0.5);
+  } catch (e) {
+    console.warn("Audio Context blocked.");
+  }
 };
 
 export const sendWhatsAppMessage = (phone: string, message: string) => {
@@ -49,7 +50,6 @@ export const sendWhatsAppMessage = (phone: string, message: string) => {
 
 export const showPushNotification = async (title: string, body: string) => {
   if (!("Notification" in window)) return;
-
   if (Notification.permission === "granted") {
     new Notification(title, { body, icon: 'https://cdn-icons-png.flaticon.com/512/2972/2972185.png' });
   } else if (Notification.permission !== "denied") {
@@ -60,55 +60,48 @@ export const showPushNotification = async (title: string, body: string) => {
   }
 };
 
-/**
- * CLOUD SYNC SERVICE (JSONBLOB)
- * Allows for a free, keyless online database simulation.
- */
-const CLOUD_API_URL = 'https://jsonblob.com/api/jsonBlob';
+// --- SUPABASE DATABASE OPERATIONS ---
 
-export const createCloudBin = async (data: any): Promise<string | null> => {
+export const fetchOrdersFromSupabase = async (): Promise<Order[]> => {
   try {
-    const response = await fetch(CLOUD_API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify(data)
-    });
-    const location = response.headers.get('Location');
-    if (location) {
-      const parts = location.split('/');
-      return parts[parts.length - 1];
-    }
-    return null;
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .order('createdAt', { ascending: false });
+    
+    if (error) throw error;
+    return data || [];
   } catch (err) {
-    console.error("Cloud creation failed", err);
-    return null;
+    console.error("Supabase fetch error:", err);
+    return [];
   }
 };
 
-export const updateCloudBin = async (binId: string, data: any): Promise<boolean> => {
+export const upsertOrderToSupabase = async (order: Order): Promise<boolean> => {
   try {
-    const response = await fetch(`${CLOUD_API_URL}/${binId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify(data)
-    });
-    return response.ok;
+    const { error } = await supabase
+      .from('orders')
+      .upsert(order);
+    
+    if (error) throw error;
+    return true;
   } catch (err) {
-    console.error("Cloud update failed", err);
+    console.error("Supabase upsert error:", err);
     return false;
   }
 };
 
-export const getCloudBin = async (binId: string): Promise<any | null> => {
+export const deleteOrderFromSupabase = async (id: string): Promise<boolean> => {
   try {
-    const response = await fetch(`${CLOUD_API_URL}/${binId}`, {
-      method: 'GET',
-      headers: { 'Accept': 'application/json' }
-    });
-    if (response.ok) return await response.json();
-    return null;
+    const { error } = await supabase
+      .from('orders')
+      .delete()
+      .eq('id', id);
+    
+    if (error) throw error;
+    return true;
   } catch (err) {
-    console.error("Cloud fetch failed", err);
-    return null;
+    console.error("Supabase delete error:", err);
+    return false;
   }
 };

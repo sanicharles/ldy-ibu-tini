@@ -61,97 +61,42 @@
             pointer-events: none;
         }
 
-        .soap-bubble::after {
-            content: "";
-            position: absolute;
-            top: 20%;
-            left: 20%;
-            width: 25%;
-            height: 25%;
-            background: rgba(255, 255, 255, 0.6);
-            border-radius: 50%;
-            filter: blur(1px);
-        }
-
         @keyframes rise {
-            0% {
-                transform: translateY(0) translateX(0) scale(1);
-                opacity: 0;
-            }
+            0% { transform: translateY(0) translateX(0) scale(1); opacity: 0; }
             5% { opacity: 0.7; }
-            25% { transform: translateY(-30vh) translateX(40px) scale(1.05); }
-            50% { transform: translateY(-60vh) translateX(-40px) scale(1.1); }
-            75% { transform: translateY(-90vh) translateX(40px) scale(1.05); }
-            100% {
-                transform: translateY(-130vh) translateX(0) scale(1.2);
-                opacity: 0;
-            }
+            100% { transform: translateY(-130vh) translateX(0) scale(1.2); opacity: 0; }
         }
 
-        /* Bubble Variations */
         .soap-bubble:nth-child(1) { left: 5%; width: 45px; height: 45px; --duration: 12s; animation-delay: 0s; }
         .soap-bubble:nth-child(2) { left: 12%; width: 20px; height: 20px; --duration: 15s; animation-delay: 3s; }
         .soap-bubble:nth-child(3) { left: 22%; width: 60px; height: 60px; --duration: 18s; animation-delay: 1s; }
         .soap-bubble:nth-child(4) { left: 35%; width: 35px; height: 35px; --duration: 14s; animation-delay: 5s; }
         .soap-bubble:nth-child(5) { left: 48%; width: 55px; height: 55px; --duration: 20s; animation-delay: 2s; }
-        .soap-bubble:nth-child(6) { left: 55%; width: 25px; height: 25px; --duration: 16s; animation-delay: 4s; }
-        .soap-bubble:nth-child(7) { left: 68%; width: 40px; height: 40px; --duration: 13s; animation-delay: 6s; }
-        .soap-bubble:nth-child(8) { left: 82%; width: 30px; height: 30px; --duration: 17s; animation-delay: 0s; }
-        .soap-bubble:nth-child(9) { left: 90%; width: 50px; height: 50px; --duration: 19s; animation-delay: 3s; }
-        .soap-bubble:nth-child(10) { left: 2%; width: 25px; height: 25px; --duration: 11s; animation-delay: 8s; }
-        .soap-bubble:nth-child(11) { left: 28%; width: 40px; height: 40px; --duration: 22s; animation-delay: 5s; }
-        .soap-bubble:nth-child(12) { left: 42%; width: 15px; height: 15px; --duration: 14s; animation-delay: 7s; }
-        .soap-bubble:nth-child(13) { left: 62%; width: 70px; height: 70px; --duration: 25s; animation-delay: 1s; }
-        .soap-bubble:nth-child(14) { left: 78%; width: 35px; height: 35px; --duration: 16s; animation-delay: 9s; }
-        .soap-bubble:nth-child(15) { left: 95%; width: 45px; height: 45px; --duration: 21s; animation-delay: 4s; }
-        .soap-bubble:nth-child(16) { left: 18%; width: 20px; height: 20px; --duration: 13s; animation-delay: 2s; }
 
-        @keyframes spin-slow {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-
-        @keyframes spin-reverse {
-            from { transform: rotate(360deg); }
-            to { transform: rotate(0deg); }
-        }
-
-        @keyframes slide-in-left {
-            0% { transform: translateX(-50px); opacity: 0; }
-            100% { transform: translateX(0); opacity: 1; }
-        }
-
-        @keyframes zoom-in {
-            0% { transform: scale(0.9); opacity: 0; }
-            100% { transform: scale(1); opacity: 1; }
-        }
+        @keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes spin-reverse { from { transform: rotate(360deg); } to { transform: rotate(0deg); } }
+        @keyframes slide-in-left { 0% { transform: translateX(-50px); opacity: 0; } 100% { transform: translateX(0); opacity: 1; } }
+        @keyframes zoom-in { 0% { transform: scale(0.9); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        @keyframes slide-in-right { 0% { transform: translateX(50px); opacity: 0; } 100% { transform: translateX(0); opacity: 1; } }
+        @keyframes fade-in { 0% { opacity: 0; } 100% { opacity: 1; } }
+        @keyframes pulse-animation { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0.7; transform: scale(1.05); } 100% { opacity: 1; transform: scale(1); } }
 
         .animate-spin-slow { animation: spin-slow 15s linear infinite; }
         .animate-spin-reverse { animation: spin-reverse 20s linear infinite; }
         .animate-slide-in-left { animation: slide-in-left 1s cubic-bezier(0.16, 1, 0.3, 1); }
         .animate-zoom-in { animation: zoom-in 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
+        .animate-slide-in-right { animation: slide-in-right 0.5s ease-out; }
+        .animate-fade-in { animation: fade-in 0.3s ease-out; }
+        .pulse { animation: pulse-animation 2s infinite; }
 
         .whatsapp-float {
-            position: fixed;
-            width: 60px;
-            height: 60px;
-            bottom: 24px;
-            right: 24px;
-            background-color: #25d366;
-            color: #FFF;
-            border-radius: 50px;
-            text-align: center;
-            font-size: 30px;
-            box-shadow: 0 4px 12px rgba(37, 211, 102, 0.4);
-            z-index: 1000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            position: fixed; width: 60px; height: 60px; bottom: 24px; right: 24px;
+            background-color: #25d366; color: #FFF; border-radius: 50px;
+            text-align: center; font-size: 30px; box-shadow: 0 4px 12px rgba(37, 211, 102, 0.4);
+            z-index: 1000; display: flex; align-items: center; justify-content: center;
             transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
-        .whatsapp-float:hover {
-            transform: scale(1.1) rotate(5deg);
-        }
+        .whatsapp-float:hover { transform: scale(1.1) rotate(5deg); }
     </style>
 <script type="importmap">
 {
@@ -167,22 +112,9 @@
 </head>
 <body class="text-gray-900">
     <div class="bg-laundry-theme">
-        <div class="soap-bubble"></div>
-        <div class="soap-bubble"></div>
-        <div class="soap-bubble"></div>
-        <div class="soap-bubble"></div>
-        <div class="soap-bubble"></div>
-        <div class="soap-bubble"></div>
-        <div class="soap-bubble"></div>
-        <div class="soap-bubble"></div>
-        <div class="soap-bubble"></div>
-        <div class="soap-bubble"></div>
-        <div class="soap-bubble"></div>
-        <div class="soap-bubble"></div>
-        <div class="soap-bubble"></div>
-        <div class="soap-bubble"></div>
-        <div class="soap-bubble"></div>
-        <div class="soap-bubble"></div>
+        <div class="soap-bubble"></div><div class="soap-bubble"></div><div class="soap-bubble"></div>
+        <div class="soap-bubble"></div><div class="soap-bubble"></div><div class="soap-bubble"></div>
+        <div class="soap-bubble"></div><div class="soap-bubble"></div><div class="soap-bubble"></div>
     </div>
     <div id="root"></div>
 </body>
