@@ -87,7 +87,7 @@ const ADMIN_PIN = "2115";
 
 const Button = ({ children, onClick, variant = 'primary', className = '', type = 'button', disabled = false }: any) => {
   const variants = {
-    primary: 'bg-blue-600 text-white hover:bg-blue-700 shadow-md shadow-blue-200',
+    primary: 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-200 hover:shadow-blue-300',
     secondary: 'bg-white text-blue-600 border-2 border-blue-600 hover:bg-blue-50',
     success: 'bg-green-600 text-white hover:bg-green-700 shadow-md shadow-green-100',
     danger: 'bg-red-600 text-white hover:bg-red-700 shadow-md shadow-red-100',
@@ -98,7 +98,7 @@ const Button = ({ children, onClick, variant = 'primary', className = '', type =
       type={type}
       disabled={disabled}
       onClick={onClick}
-      className={`px-4 py-2 rounded-xl font-semibold transition-all duration-200 active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 ${variants[variant as keyof typeof variants]} ${className}`}
+      className={`px-4 py-2 rounded-2xl font-bold transition-all duration-300 active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 ${variants[variant as keyof typeof variants]} ${className}`}
     >
       {children}
     </button>
@@ -107,7 +107,7 @@ const Button = ({ children, onClick, variant = 'primary', className = '', type =
 
 const Card = ({ children, className = "", onClick }: { children?: React.ReactNode; className?: string; onClick?: () => void }) => (
   <div 
-    className={`bg-white/60 backdrop-blur-md rounded-2xl shadow-lg border border-white/60 p-6 ${className}`}
+    className={`bg-white/70 backdrop-blur-md rounded-[2rem] shadow-sm border border-white/50 p-5 md:p-8 transition-all hover:shadow-md ${className}`}
     onClick={onClick}
   >
     {children}
@@ -115,13 +115,13 @@ const Card = ({ children, className = "", onClick }: { children?: React.ReactNod
 );
 
 const Toast = ({ message, type, onClose }: { message: string, type: 'success' | 'info' | 'danger', onClose: () => void }) => (
-  <div className={`fixed top-4 right-4 z-[100] p-4 rounded-xl shadow-xl border flex items-center gap-3 animate-slide-in-right ${
-    type === 'success' ? 'bg-green-50/90 backdrop-blur-md border-green-200 text-green-800' : 
-    type === 'danger' ? 'bg-red-50/90 backdrop-blur-md border-red-200 text-red-800' :
-    'bg-blue-50/90 backdrop-blur-md border-blue-200 text-blue-800'}`}>
-    {type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : type === 'danger' ? <AlertCircle className="w-5 h-5 text-red-600" /> : <BellRing className="w-5 h-5 text-blue-600" />}
-    <p className="font-medium text-sm">{message}</p>
-    <button onClick={onClose} className="p-1 hover:bg-black/5 rounded-full"><X className="w-4 h-4" /></button>
+  <div className={`fixed top-4 left-4 right-4 md:left-auto md:right-4 z-[100] p-4 rounded-2xl shadow-2xl border flex items-center gap-3 animate-slide-in-right bg-white/90 backdrop-blur-xl ${
+    type === 'success' ? 'border-green-100 text-green-800' : 
+    type === 'danger' ? 'border-red-100 text-red-800' :
+    'border-blue-100 text-blue-800'}`}>
+    {type === 'success' ? <CheckCircle2 className="w-5 h-5 text-green-500" /> : type === 'danger' ? <AlertCircle className="w-5 h-5 text-red-500" /> : <BellRing className="w-5 h-5 text-blue-500" />}
+    <p className="font-bold text-sm flex-1">{message}</p>
+    <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-xl transition-colors"><X className="w-4 h-4" /></button>
   </div>
 );
 
@@ -129,16 +129,16 @@ const ConfirmationDialog = ({ isOpen, title, message, onConfirm, onCancel, confi
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-blue-900/40 backdrop-blur-sm animate-fade-in" onClick={onCancel}></div>
-      <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl relative overflow-hidden animate-zoom-in p-8 text-center">
-        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 ${isDanger ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'}`}>
-          <AlertCircle className="w-8 h-8" />
+      <div className="absolute inset-0 bg-blue-900/40 backdrop-blur-md animate-fade-in" onClick={onCancel}></div>
+      <div className="bg-white rounded-[2.5rem] w-full max-w-sm shadow-2xl relative overflow-hidden animate-zoom-in p-8 text-center">
+        <div className={`w-20 h-20 rounded-[1.5rem] flex items-center justify-center mx-auto mb-6 ${isDanger ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'}`}>
+          <AlertCircle className="w-10 h-10" />
         </div>
-        <h3 className="text-xl font-black text-gray-800 mb-2">{title}</h3>
-        <p className="text-gray-500 font-medium mb-8 leading-relaxed">{message}</p>
-        <div className="grid grid-cols-2 gap-3">
-          <button onClick={onCancel} className="py-3 rounded-2xl font-bold bg-gray-50 text-gray-500 hover:bg-gray-100 transition-colors">Batal</button>
-          <button onClick={onConfirm} className={`py-3 rounded-2xl font-bold text-white transition-colors ${isDanger ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'}`}>{confirmLabel}</button>
+        <h3 className="text-2xl font-black text-gray-900 mb-2">{title}</h3>
+        <p className="text-gray-500 font-medium mb-8 leading-relaxed px-4">{message}</p>
+        <div className="grid grid-cols-2 gap-4">
+          <button onClick={onCancel} className="py-4 rounded-2xl font-bold bg-gray-50 text-gray-500 hover:bg-gray-100 transition-all active:scale-95">Batal</button>
+          <button onClick={onConfirm} className={`py-4 rounded-2xl font-bold text-white transition-all active:scale-95 ${isDanger ? 'bg-red-600 hover:bg-red-700 shadow-lg shadow-red-100' : 'bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-100'}`}>{confirmLabel}</button>
         </div>
       </div>
     </div>
@@ -227,14 +227,14 @@ const OrderModal = ({ order, onClose, isAdmin, onUpdateStatus, onDeleteOrder }: 
         onCancel={() => setConfirmData(null)}
       />
 
-      <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
-        <div className="absolute inset-0 bg-blue-900/40 backdrop-blur-sm animate-fade-in" onClick={onClose}></div>
-        <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl relative overflow-hidden animate-zoom-in max-h-[90vh] flex flex-col">
+      <div className="fixed inset-0 z-[150] flex items-end md:items-center justify-center md:p-4">
+        <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm animate-fade-in" onClick={onClose}></div>
+        <div className="bg-white rounded-t-[2.5rem] md:rounded-[3rem] w-full max-w-lg shadow-2xl relative overflow-hidden animate-slide-up md:animate-zoom-in max-h-[95vh] flex flex-col">
           <div className={`h-2 ${statusColors[order.status]}`}></div>
-          <div className="px-6 py-4 flex justify-between items-center border-b bg-gray-50/50">
+          <div className="px-6 py-5 flex justify-between items-center border-b bg-slate-50/50">
             <div className="flex items-center gap-3">
-              <span className={`px-2 py-1 rounded-lg text-[10px] font-black text-white uppercase ${statusColors[order.status]}`}>{order.status}</span>
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{order.notaNumber}</p>
+              <span className={`px-2.5 py-1 rounded-xl text-[10px] font-black text-white uppercase tracking-wider ${statusColors[order.status]}`}>{order.status}</span>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{order.notaNumber}</p>
             </div>
             <div className="flex items-center gap-2">
               {isAdmin && (
@@ -244,90 +244,73 @@ const OrderModal = ({ order, onClose, isAdmin, onUpdateStatus, onDeleteOrder }: 
                     title: 'Hapus Pesanan?',
                     msg: `Tindakan ini tidak dapat dibatalkan. Apakah Anda yakin ingin menghapus pesanan ${order.notaNumber}?`
                   })}
-                  className="p-2 hover:bg-red-50 rounded-full transition-colors text-gray-400 hover:text-red-500"
+                  className="p-3 hover:bg-red-50 rounded-2xl transition-all text-slate-400 hover:text-red-500"
                   title="Hapus Order"
                 >
                   <Trash2 className="w-5 h-5" />
                 </button>
               )}
-              <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400">
+              <button onClick={onClose} className="p-3 hover:bg-slate-100 rounded-2xl transition-all text-slate-400">
                 <X className="w-5 h-5" />
               </button>
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
-            <section className="bg-blue-50/50 rounded-2xl p-4 border border-blue-100/50">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center text-blue-600">
-                  <UserCircle className="w-7 h-7" />
+          <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8">
+            <section className="bg-blue-50/80 rounded-[2rem] p-6 border border-blue-100/50 relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-4 opacity-10"><UserCircle className="w-20 h-20" /></div>
+              <div className="flex items-start gap-5 relative z-10">
+                <div className="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center text-blue-600 shrink-0">
+                  <UserCircle className="w-10 h-10" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-xl font-black text-gray-800 truncate">{order.customerName}</h3>
-                  <p className="text-sm font-bold text-blue-600 flex items-center gap-1 mt-1">
-                    <Phone className="w-3 h-3" /> {order.customerPhone}
-                  </p>
+                  <h3 className="text-2xl font-black text-slate-900 truncate tracking-tight">{order.customerName}</h3>
+                  <a href={`tel:${order.customerPhone}`} className="text-sm font-bold text-blue-600 flex items-center gap-2 mt-1 hover:underline">
+                    <Phone className="w-4 h-4" /> {order.customerPhone}
+                  </a>
                 </div>
               </div>
-              <div className="mt-4 flex items-start gap-2 text-sm text-gray-600 font-medium leading-relaxed">
-                <MapPin className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
+              <div className="mt-6 flex items-start gap-3 text-sm text-slate-600 font-semibold leading-relaxed">
+                <MapPin className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
                 <span>{order.customerAddress}</span>
               </div>
             </section>
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 flex items-center gap-1">
-                   <Shirt className="w-3 h-3" /> Layanan
-                </p>
-                <p className="font-bold text-gray-800 text-sm">{order.serviceType}</p>
-              </div>
-              <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 flex items-center gap-1">
-                   <Package className="w-3 h-3" /> Berat/Qty
-                </p>
-                <p className="font-bold text-gray-800 text-sm">{order.weight} {order.serviceType.includes('Cuci') ? 'Kg' : 'Unit'}</p>
-              </div>
-              <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 flex items-center gap-1">
-                   <CalendarDays className="w-3 h-3" /> Tanggal
-                </p>
-                <p className="font-bold text-gray-800 text-sm">{new Date(order.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</p>
-              </div>
-              <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 flex items-center gap-1">
-                   <Truck className="w-3 h-3" /> Pengiriman
-                </p>
-                <p className="font-bold text-gray-800 text-sm">{order.deliveryMethod}</p>
-              </div>
+              <DetailBox icon={Shirt} label="Layanan" value={order.serviceType} />
+              <DetailBox icon={Package} label="Berat/Qty" value={`${order.weight} ${order.serviceType.includes('Cuci') ? 'Kg' : 'Unit'}`} />
+              <DetailBox icon={CalendarDays} label="Tanggal" value={new Date(order.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} />
+              <DetailBox icon={Truck} label="Pengiriman" value={order.deliveryMethod} />
             </div>
 
             {order.specialRequest && (
-              <div className="bg-orange-50 rounded-2xl p-4 border border-orange-100">
-                <div className="flex items-center gap-2 mb-1">
+              <div className="bg-orange-50/50 rounded-[1.5rem] p-5 border border-orange-100">
+                <div className="flex items-center gap-2 mb-2">
                   <Info className="w-4 h-4 text-orange-500" />
                   <p className="text-[10px] font-black text-orange-600 uppercase tracking-widest">Catatan Khusus</p>
                 </div>
-                <p className="font-bold text-orange-800 text-sm italic">"{order.specialRequest}"</p>
+                <p className="font-bold text-orange-900 text-sm italic leading-relaxed">"{order.specialRequest}"</p>
               </div>
             )}
 
-            <div className="bg-gray-800 text-white rounded-2xl p-5 shadow-inner flex items-center justify-between">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Total Bayar</p>
-                <p className="text-3xl font-black tracking-tight">{formatIDR(order.totalPrice)}</p>
+            <div className="bg-slate-900 text-white rounded-[2rem] p-7 shadow-xl flex items-center justify-between group overflow-hidden relative">
+              <div className="absolute -right-4 -top-4 opacity-10 group-hover:scale-110 transition-transform duration-700">
+                 <Coins className="w-32 h-32" />
               </div>
-              <Coins className="w-10 h-10 text-yellow-500 opacity-20" />
+              <div className="relative z-10">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Total Bayar</p>
+                <p className="text-4xl font-black tracking-tighter">{formatIDR(order.totalPrice)}</p>
+              </div>
             </div>
           </div>
 
-          <div className="p-6 bg-gray-50 border-t flex flex-col gap-3">
-            <div className="grid grid-cols-2 gap-3">
-              <button onClick={generatePDF} className="flex-1 flex items-center justify-center gap-2 bg-white border border-gray-200 text-gray-700 py-3 rounded-2xl font-bold transition-all hover:bg-gray-50 shadow-sm active:scale-95">
-                <Printer className="w-4 h-4" /> CETAK NOTA
+          <div className="p-6 md:p-8 bg-slate-50 border-t flex flex-col gap-4">
+            <div className="grid grid-cols-2 gap-4">
+              <button onClick={generatePDF} className="flex items-center justify-center gap-3 bg-white border border-slate-200 text-slate-700 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all hover:bg-slate-50 active:scale-95 shadow-sm">
+                <Printer className="w-5 h-5" /> NOTA
               </button>
-              <button onClick={handleContact} className="flex-1 flex items-center justify-center gap-2 bg-green-50 text-green-700 py-3 rounded-2xl font-bold transition-all hover:bg-green-100 shadow-sm shadow-green-100/50 active:scale-95">
-                <MessageCircle className="w-4 h-4" /> WHATSAPP
+              <button onClick={handleContact} className="flex items-center justify-center gap-3 bg-green-50 text-green-700 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all hover:bg-green-100 active:scale-95 shadow-sm border border-green-100">
+                <MessageCircle className="w-5 h-5" /> WA
               </button>
             </div>
             
@@ -339,7 +322,7 @@ const OrderModal = ({ order, onClose, isAdmin, onUpdateStatus, onDeleteOrder }: 
                       status: 'Proses', 
                       title: 'Mulai Pengerjaan?', 
                       msg: `Ubah status ${order.customerName} menjadi 'Proses'?` 
-                  })} className="w-full py-4 bg-orange-500 hover:bg-orange-600 font-black tracking-wide">
+                  })} className="w-full py-5 text-sm font-black tracking-widest uppercase bg-orange-500 hover:bg-orange-600">
                     MULAI PROSES PENGERJAAN
                   </Button>
                 )}
@@ -349,7 +332,7 @@ const OrderModal = ({ order, onClose, isAdmin, onUpdateStatus, onDeleteOrder }: 
                       status: 'Selesai', 
                       title: 'Selesaikan Order?', 
                       msg: `Kirim notifikasi ke ${order.customerName} bahwa pesanan sudah selesai?` 
-                  })} variant="success" className="w-full py-4 font-black tracking-wide">
+                  })} variant="success" className="w-full py-5 text-sm font-black tracking-widest uppercase">
                     SELESAIKAN & KIRIM NOTIFIKASI
                   </Button>
                 )}
@@ -361,6 +344,17 @@ const OrderModal = ({ order, onClose, isAdmin, onUpdateStatus, onDeleteOrder }: 
     </>
   );
 };
+
+function DetailBox({ icon: Icon, label, value }: any) {
+  return (
+    <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 transition-all hover:bg-white hover:shadow-sm">
+      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+         <Icon className="w-3.5 h-3.5" /> {label}
+      </p>
+      <p className="font-bold text-slate-800 text-sm truncate">{value}</p>
+    </div>
+  );
+}
 
 // --- Main App Component ---
 
@@ -386,7 +380,6 @@ export default function App() {
   const [adminPinInput, setAdminPinInput] = useState('');
   const [adminPinError, setAdminPinError] = useState(false);
 
-  // --- Initialize Supabase & Realtime ---
   const initializeSupabase = useCallback(async () => {
     setDbStatus('syncing');
     try {
@@ -493,14 +486,14 @@ export default function App() {
   const addOrder = async (newOrder: Order) => {
     setOrders(prev => [newOrder, ...prev]);
     playNotificationSound();
-    setToast({ message: "Mendaftarkan order ke Cloud...", type: 'info' });
+    setToast({ message: "Mengirim data ke server...", type: 'info' });
 
     const success = await upsertOrderToSupabase(newOrder);
     if (success) {
-      setToast({ message: `Order ${newOrder.notaNumber} Berhasil Terdaftar!`, type: 'success' });
+      setToast({ message: `Pesanan ${newOrder.notaNumber} Berhasil Dibuat!`, type: 'success' });
       setActiveTab('orders');
     } else {
-      setToast({ message: "Gagal simpan ke Cloud, tersimpan lokal.", type: 'info' });
+      setToast({ message: "Gagal simpan online, pesanan tersimpan lokal.", type: 'info' });
     }
     setTimeout(() => setToast(null), 5000);
   };
@@ -515,7 +508,7 @@ export default function App() {
 
     const success = await upsertOrderToSupabase(updatedOrder);
     if (success) {
-        setToast({ message: `Status diperbarui ke ${newStatus}`, type: 'success' });
+        setToast({ message: `Status diperbarui: ${newStatus}`, type: 'success' });
     }
     setTimeout(() => setToast(null), 4000);
   };
@@ -528,10 +521,7 @@ export default function App() {
     
     const success = await deleteOrderFromSupabase(id);
     if (success) {
-      setToast({ message: `Pesanan ${order.notaNumber} telah dihapus.`, type: 'danger' });
-    } else {
-      setToast({ message: "Gagal menghapus dari Cloud.", type: 'danger' });
-      initializeSupabase();
+      setToast({ message: `Pesanan ${order.notaNumber} dihapus.`, type: 'danger' });
     }
     setTimeout(() => setToast(null), 5000);
   };
@@ -593,105 +583,78 @@ export default function App() {
 
   if (showSplash) {
     return (
-      <div className="fixed inset-0 bg-blue-600 flex items-center justify-center flex-col text-white z-[1000]">
-        <WashingMachine className="w-16 h-16 animate-bounce mb-4" />
-        <h1 className="text-3xl font-bold tracking-tight">LAUNDRY IBU TINI</h1>
+      <div className="fixed inset-0 bg-blue-600 flex items-center justify-center flex-col text-white z-[1000] p-6 text-center">
+        <WashingMachine className="w-20 h-20 animate-bounce mb-6" />
+        <h1 className="text-4xl font-black tracking-tighter uppercase mb-2">LAUNDRY IBU TINI</h1>
+        <p className="text-blue-100 font-bold opacity-80 uppercase tracking-widest text-[10px]">Professional Management System</p>
       </div>
     );
   }
 
   if (showWelcome) {
     return (
-      <div className="min-h-screen relative overflow-hidden bg-[#f0f9ff]">
-        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-100/50 rounded-full blur-[120px] animate-pulse"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-100/40 rounded-full blur-[100px]"></div>
-
-        <div className="relative z-10 max-w-7xl mx-auto px-6 pt-12 pb-24 min-h-screen flex flex-col">
-          <div className="flex items-center gap-2 mb-20 animate-fade-in">
-             <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-200">
+      <div className="min-h-screen relative overflow-hidden flex flex-col">
+        <div className="relative z-10 max-w-7xl mx-auto px-6 pt-12 pb-24 min-h-screen flex flex-col w-full">
+          <div className="flex items-center gap-2 mb-12 md:mb-24 animate-fade-in">
+             <div className="w-10 h-10 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-blue-100">
                 <WashingMachine className="w-6 h-6" />
              </div>
-             <span className="text-xl font-black tracking-tighter text-gray-900">LAUNDRY IBU TINI</span>
+             <span className="text-xl font-black tracking-tighter text-slate-900">LAUNDRY IBU TINI</span>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center flex-1">
             <div className="space-y-10 animate-slide-in-left">
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600/10 text-blue-600 rounded-full border border-blue-100 font-black text-[10px] uppercase tracking-widest">
-                <Sparkles className="w-3 h-3" /> Digital Laundry Experience
+              <div className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600/10 text-blue-600 rounded-full border border-blue-100 font-black text-[10px] uppercase tracking-widest">
+                <Sparkles className="w-4 h-4" /> Solusi Cuci Pintar & Modern
               </div>
               
-              <h1 className="text-6xl md:text-8xl font-black text-gray-900 leading-[0.9] tracking-tighter">
+              <h1 className="text-6xl md:text-8xl font-black text-slate-900 leading-[0.9] tracking-tighter">
                 Cucian <span className="text-blue-600">Bersih</span>,<br />Hidup Tenang.
               </h1>
               
-              <p className="text-lg md:text-xl text-gray-600 font-medium max-w-lg leading-relaxed">
-                Manajemen laundry cerdas untuk Ibu Tini. Lacak pesanan secara real-time, cetak nota otomatis, dan layanan WhatsApp terintegrasi.
+              <p className="text-lg md:text-2xl text-slate-500 font-semibold max-w-xl leading-relaxed">
+                Platform laundry digital paling simpel untuk Ibu Tini. Pantau status cucian kapan saja dan di mana saja secara real-time.
               </p>
 
-              <div className="flex flex-col sm:flex-row gap-4 pt-4">
+              <div className="pt-4">
                 <button 
                   onClick={() => setShowWelcome(false)}
-                  className="px-10 py-5 bg-blue-600 hover:bg-blue-700 text-white rounded-[2rem] font-black text-xl transition-all shadow-xl shadow-blue-200 hover:-translate-y-1 active:scale-95 flex items-center justify-center gap-3"
+                  className="w-full sm:w-auto px-12 py-6 bg-blue-600 hover:bg-blue-700 text-white rounded-[2.5rem] font-black text-2xl transition-all shadow-2xl shadow-blue-200 hover:-translate-y-2 active:scale-95 flex items-center justify-center gap-4"
                 >
-                  Mulai Sekarang <ArrowRight className="w-6 h-6" />
+                  Mulai Sekarang <ArrowRight className="w-8 h-8" />
                 </button>
               </div>
 
-              <div className="grid grid-cols-3 gap-4 pt-10 border-t border-gray-100">
-                <div className="space-y-2">
-                  <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600"><ZapIcon className="w-4 h-4" /></div>
-                  <p className="text-[10px] font-black uppercase text-gray-400">Express</p>
-                  <p className="font-bold text-gray-800">24 Jam Selesai</p>
-                </div>
-                <div className="space-y-2">
-                  <div className="w-8 h-8 bg-green-50 rounded-lg flex items-center justify-center text-green-600"><ShieldCheck className="w-4 h-4" /></div>
-                  <p className="text-[10px] font-black uppercase text-gray-400">Higienis</p>
-                  <p className="font-bold text-gray-800">Anti Bakteri</p>
-                </div>
-                <div className="space-y-2">
-                  <div className="w-8 h-8 bg-purple-50 rounded-lg flex items-center justify-center text-purple-600"><Star className="w-4 h-4" /></div>
-                  <p className="text-[10px] font-black uppercase text-gray-400">Rating</p>
-                  <p className="font-bold text-gray-800">Bintang 5</p>
-                </div>
+              <div className="grid grid-cols-3 gap-6 pt-10 border-t border-slate-100">
+                <WelcomeMetric icon={ZapIcon} label="Express" value="24 Jam" color="blue" />
+                <WelcomeMetric icon={ShieldCheck} label="Higienis" value="Anti Bakteri" color="green" />
+                <WelcomeMetric icon={Star} label="Kualitas" value="Bintang 5" color="purple" />
               </div>
             </div>
 
-            <div className="relative animate-zoom-in hidden lg:block">
+            <div className="relative hidden lg:block animate-scale-in">
               <div className="relative w-full aspect-square max-w-md mx-auto">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-200/30 rounded-full animate-bounce" style={{animationDuration: '4s'}}></div>
-                <div className="absolute bottom-10 left-0 w-24 h-24 bg-blue-100/40 rounded-full animate-bounce" style={{animationDuration: '6s', animationDelay: '1s'}}></div>
-                
-                <div className="absolute inset-0 bg-white rounded-[3rem] shadow-2xl border border-blue-50 rotate-3 overflow-hidden group hover:rotate-0 transition-transform duration-700">
-                   <div className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-br from-blue-600 to-blue-800 p-10 text-white">
-                      <WashingMachine className="w-20 h-20 opacity-20 absolute top-10 right-10 animate-spin-slow" />
-                      <Waves className="w-16 h-16 mb-4" />
-                      <h3 className="text-3xl font-black">Laundry Pro</h3>
-                      <p className="opacity-80">High performance system</p>
+                <div className="absolute top-0 right-0 w-40 h-40 bg-blue-200/30 rounded-full animate-pulse blur-2xl"></div>
+                <div className="absolute inset-0 bg-white rounded-[4rem] shadow-2xl border border-blue-50 rotate-6 overflow-hidden transition-transform duration-700 hover:rotate-0">
+                   <div className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-br from-blue-600 to-blue-800 p-12 text-white">
+                      <WashingMachine className="w-24 h-24 opacity-20 absolute top-10 right-10 animate-spin-slow" />
+                      <Waves className="w-16 h-16 mb-6" />
+                      <h3 className="text-3xl font-black">Laundry OS</h3>
+                      <p className="opacity-80 font-bold uppercase tracking-widest text-xs mt-2">Enterprise Ready</p>
                    </div>
-                   <div className="absolute bottom-0 left-0 w-full h-1/2 p-10 space-y-4">
-                      <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                         <div className="h-full w-2/3 bg-blue-600 rounded-full animate-pulse"></div>
+                   <div className="absolute bottom-0 left-0 w-full h-1/2 p-12 space-y-6">
+                      <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                         <div className="h-full w-4/5 bg-blue-600 rounded-full animate-pulse"></div>
                       </div>
                       <div className="flex justify-between items-center">
-                         <span className="text-xs font-bold text-gray-400">SINKRONISASI CLOUD</span>
-                         <span className="text-xs font-black text-blue-600">80% AKTIF</span>
+                         <span className="text-xs font-black text-slate-400 uppercase tracking-widest">SINKRONISASI AKTIF</span>
+                         <span className="text-xs font-black text-blue-600">CLOUD SECURE</span>
                       </div>
-                      <div className="pt-4 flex gap-2">
-                         <div className="w-8 h-8 rounded-full bg-gray-100"></div>
-                         <div className="w-8 h-8 rounded-full bg-gray-100"></div>
-                         <div className="w-8 h-8 rounded-full bg-gray-100"></div>
+                      <div className="pt-4 flex gap-3">
+                         <div className="w-10 h-10 rounded-2xl bg-slate-50 border border-slate-100"></div>
+                         <div className="w-10 h-10 rounded-2xl bg-slate-50 border border-slate-100"></div>
+                         <div className="w-10 h-10 rounded-2xl bg-slate-50 border border-slate-100"></div>
                       </div>
-                   </div>
-                </div>
-
-                <div className="absolute -top-6 -left-6 w-20 h-20 bg-blue-600 rounded-3xl flex items-center justify-center text-white shadow-xl shadow-blue-200 -rotate-12">
-                   <Droplets className="w-10 h-10" />
-                </div>
-                <div className="absolute -bottom-6 -right-6 px-6 py-4 bg-white rounded-2xl shadow-xl border border-gray-50 flex items-center gap-3">
-                   <div className="p-2 bg-green-100 rounded-xl"><CheckCircle2 className="w-6 h-6 text-green-600" /></div>
-                   <div>
-                      <p className="text-[10px] font-black text-gray-400 uppercase">Status</p>
-                      <p className="font-black text-gray-800">READY TO CLEAN</p>
                    </div>
                 </div>
               </div>
@@ -702,16 +665,30 @@ export default function App() {
     );
   }
 
+  function WelcomeMetric({ icon: Icon, label, value, color }: any) {
+    const colors: any = { blue: 'bg-blue-50 text-blue-600', green: 'bg-green-50 text-green-600', purple: 'bg-purple-50 text-purple-600' };
+    return (
+      <div className="space-y-3">
+        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${colors[color]}`}><Icon className="w-6 h-6" /></div>
+        <div>
+          <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1">{label}</p>
+          <p className="font-black text-slate-800 text-sm">{value}</p>
+        </div>
+      </div>
+    );
+  }
+
   if (showAdminLogin && !role) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6">
-        <Card className="max-w-md w-full text-center p-10 animate-fade-in">
-          <button onClick={() => setShowAdminLogin(false)} className="mb-6 text-sm text-blue-600 flex items-center gap-1 hover:underline"><X className="w-4 h-4" /> Batal</button>
-          <div className="w-20 h-20 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-6 text-blue-600"><Lock className="w-10 h-10" /></div>
-          <h2 className="text-2xl font-bold mb-8">Login Portal Admin</h2>
-          <form onSubmit={handleAdminLogin} className="space-y-6">
-            <input required autoFocus type="password" maxLength={4} className={`w-full px-4 py-5 border rounded-2xl text-center text-4xl tracking-[1rem] font-black outline-none ${adminPinError ? 'border-red-500 bg-red-50' : 'border-blue-100'}`} placeholder="••••" value={adminPinInput} onChange={(e) => { setAdminPinInput(e.target.value.replace(/\D/g, '')); setAdminPinError(false); }} />
-            <Button type="submit" className="w-full py-4 text-lg">Buka Portal <Unlock className="w-5 h-5" /></Button>
+      <div className="min-h-screen flex items-center justify-center p-6 bg-slate-50">
+        <Card className="max-w-md w-full text-center p-10 md:p-12 animate-scale-in bg-white shadow-2xl">
+          <button onClick={() => setShowAdminLogin(false)} className="mb-8 text-sm text-blue-600 font-bold flex items-center gap-2 hover:underline"><X className="w-4 h-4" /> Kembali</button>
+          <div className="w-24 h-24 bg-blue-50 rounded-[2rem] flex items-center justify-center mx-auto mb-8 text-blue-600 shadow-inner"><Lock className="w-10 h-10" /></div>
+          <h2 className="text-3xl font-black text-slate-900 mb-2">Portal Admin</h2>
+          <p className="text-slate-400 font-semibold mb-10">Masukkan PIN 4 digit untuk akses kontrol.</p>
+          <form onSubmit={handleAdminLogin} className="space-y-8">
+            <input required autoFocus type="password" maxLength={4} className={`w-full px-4 py-6 border rounded-[2rem] text-center text-5xl tracking-[1.5rem] font-black outline-none focus:ring-4 focus:ring-blue-100 transition-all ${adminPinError ? 'border-red-500 bg-red-50 text-red-600' : 'border-slate-100 bg-slate-50'}`} placeholder="••••" value={adminPinInput} onChange={(e) => { setAdminPinInput(e.target.value.replace(/\D/g, '')); setAdminPinError(false); }} />
+            <Button type="submit" className="w-full py-6 text-xl shadow-blue-100">Buka Akses <Unlock className="w-6 h-6" /></Button>
           </form>
         </Card>
       </div>
@@ -720,40 +697,49 @@ export default function App() {
 
   if (!role) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6">
-        <Card className="max-w-md w-full text-center py-10">
-          <WashingMachine className="w-12 h-12 text-blue-600 mx-auto mb-6" />
-          <h2 className="text-2xl font-bold mb-10">Pilih Akses Masuk</h2>
-          <div className="space-y-4">
-            <button onClick={() => handleRoleSelect('ADMIN')} className="w-full flex items-center justify-between p-5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl transition-all shadow-xl shadow-blue-100">
-              <div className="flex items-center gap-4"><Settings className="w-6 h-6" /><p className="font-bold text-lg">Portal Admin</p></div>
-              <ChevronRight />
-            </button>
-            <button onClick={() => handleRoleSelect('CUSTOMER')} className="w-full flex items-center justify-between p-5 bg-white border-2 border-blue-600 text-blue-600 rounded-2xl transition-all hover:bg-blue-50">
-              <div className="flex items-center gap-4"><UserCircle className="w-6 h-6" /><p className="font-bold text-lg">Portal Pelanggan</p></div>
-              <ChevronRight />
-            </button>
+      <div className="min-h-screen flex items-center justify-center p-6 bg-slate-50">
+        <Card className="max-w-md w-full text-center py-12 px-8 bg-white shadow-2xl">
+          <div className="w-20 h-20 bg-blue-600 rounded-3xl flex items-center justify-center text-white mx-auto mb-8 shadow-xl shadow-blue-100"><WashingMachine className="w-10 h-10" /></div>
+          <h2 className="text-3xl font-black text-slate-900 mb-12 tracking-tight">Pilih Akses Masuk</h2>
+          <div className="space-y-5">
+            <RoleButton onClick={() => handleRoleSelect('ADMIN')} icon={Settings} label="Dashboard Admin" desc="Kontrol & Manajemen Bisnis" color="blue" />
+            <RoleButton onClick={() => handleRoleSelect('CUSTOMER')} icon={UserCircle} label="Dashboard Pelanggan" desc="Lacak Cucian & Riwayat" color="white" />
           </div>
         </Card>
       </div>
     );
   }
 
+  function RoleButton({ onClick, icon: Icon, label, desc, color }: any) {
+    return (
+      <button onClick={onClick} className={`w-full group flex items-center justify-between p-6 rounded-[2rem] transition-all duration-300 hover:scale-[1.02] active:scale-95 ${color === 'blue' ? 'bg-blue-600 text-white shadow-xl shadow-blue-100' : 'bg-white border-2 border-slate-100 text-slate-900 hover:border-blue-600'}`}>
+        <div className="flex items-center gap-5 text-left">
+           <div className={`p-3 rounded-2xl ${color === 'blue' ? 'bg-white/20' : 'bg-blue-50 text-blue-600'}`}><Icon className="w-7 h-7" /></div>
+           <div>
+              <p className="font-black text-lg leading-tight">{label}</p>
+              <p className={`text-xs font-bold opacity-60 mt-0.5`}>{desc}</p>
+           </div>
+        </div>
+        <ChevronRight className={`w-5 h-5 transition-transform group-hover:translate-x-1 ${color === 'blue' ? 'text-white/50' : 'text-slate-300'}`} />
+      </button>
+    );
+  }
+
   if (role === 'CUSTOMER' && !customerPhone) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6">
-        <Card className="max-w-md w-full p-10 shadow-2xl">
-          <button onClick={() => setRole(null)} className="mb-6 text-sm text-blue-600 flex items-center gap-1 hover:underline"><X className="w-4 h-4" /> Kembali</button>
-          <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 mb-6 mx-auto"><SearchCheck className="w-8 h-8" /></div>
-          <h2 className="text-2xl font-black text-center mb-2">Order</h2>
-          <p className="text-center text-gray-500 text-sm mb-8">Masukkan nomor HP WhatsApp yang digunakan saat mendaftar untuk melihat pesanan.</p>
+      <div className="min-h-screen flex items-center justify-center p-6 bg-slate-50">
+        <Card className="max-w-md w-full p-10 md:p-12 shadow-2xl bg-white">
+          <button onClick={() => setRole(null)} className="mb-8 text-sm text-blue-600 font-black flex items-center gap-2 hover:underline"><X className="w-4 h-4" /> Kembali</button>
+          <div className="w-20 h-20 bg-blue-50 rounded-[2rem] flex items-center justify-center text-blue-600 mb-8 mx-auto shadow-inner"><SearchCheck className="w-10 h-10" /></div>
+          <h2 className="text-3xl font-black text-center mb-2 text-slate-900">Order Tracking</h2>
+          <p className="text-center text-slate-400 font-semibold text-sm mb-10 px-4">Lacak pesanan Anda menggunakan nomor WhatsApp yang terdaftar.</p>
           <form onSubmit={(e) => { e.preventDefault(); const p = (e.target as any).phone.value; setCustomerPhone(p); localStorage.setItem('tini_customer_phone', p); initializeSupabase(); }}>
-            <div className="space-y-6">
-              <div className="space-y-1">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Nomor HP WhatsApp</label>
-                <input name="phone" required type="tel" className="w-full px-5 py-4 border border-blue-100 rounded-2xl outline-none bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all font-bold" placeholder="Contoh: 081234567890" />
+            <div className="space-y-8">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Nomor HP WhatsApp</label>
+                <input name="phone" required type="tel" className="w-full px-6 py-5 border border-slate-100 bg-slate-50/50 rounded-[1.5rem] outline-none focus:bg-white focus:ring-4 focus:ring-blue-100 transition-all font-black text-xl text-slate-800" placeholder="08XXXXXXXXXX" />
               </div>
-              <Button type="submit" className="w-full py-4 text-lg">Lihat Pesanan Saya <ArrowRight className="w-5 h-5" /></Button>
+              <Button type="submit" className="w-full py-6 text-xl shadow-blue-100">Tampilkan Dashboard <ArrowRight className="w-6 h-6" /></Button>
             </div>
           </form>
         </Card>
@@ -762,77 +748,89 @@ export default function App() {
   }
 
   return (
-    <div className={`min-h-screen ${isDarkMode ? 'dark text-white' : 'bg-transparent'}`}>
+    <div className={`min-h-screen pb-24 md:pb-0 ${isDarkMode ? 'dark text-white' : 'bg-transparent'}`}>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       <OrderModal order={selectedOrder} onClose={() => setSelectedOrder(null)} isAdmin={role === 'ADMIN'} onUpdateStatus={updateOrderStatus} onDeleteOrder={handleDeleteOrder} />
       
-      <div className="hidden md:fixed md:inset-y-0 md:flex md:w-64 md:flex-col">
-        <div className="flex flex-1 flex-col bg-blue-700 p-8 text-white">
-          <div className="flex items-center gap-3 mb-12"><WashingMachine className="w-8 h-8" /><span className="font-black text-xl tracking-tighter">IBU TINI</span></div>
-          <nav className="flex-1 space-y-4">
+      {/* Sidebar Desktop */}
+      <div className="hidden md:fixed md:inset-y-0 md:flex md:w-72 md:flex-col">
+        <div className="flex flex-1 flex-col bg-slate-900 p-10 text-white m-4 rounded-[3rem] shadow-2xl overflow-hidden relative">
+          <div className="absolute top-0 right-0 w-40 h-40 bg-blue-500/10 rounded-full blur-3xl -mr-20 -mt-20"></div>
+          <div className="flex items-center gap-4 mb-16 relative z-10">
+             <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-blue-500/20">
+                <WashingMachine className="w-7 h-7" />
+             </div>
+             <span className="font-black text-2xl tracking-tighter">IBU TINI</span>
+          </div>
+          
+          <nav className="flex-1 space-y-5 relative z-10">
             {role === 'ADMIN' ? (
               <>
-                <SidebarLink icon={LayoutDashboard} label="Beranda" active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} />
-                <SidebarLink icon={ClipboardList} label="Daftar Order" active={activeTab === 'orders'} onClick={() => setActiveTab('orders')} />
+                <SidebarLink icon={LayoutDashboard} label="Dashboard" active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} />
+                <SidebarLink icon={ClipboardList} label="Data Pesanan" active={activeTab === 'orders'} onClick={() => setActiveTab('orders')} />
                 <SidebarLink icon={PlusCircle} label="Tambah Order" active={activeTab === 'add'} onClick={() => setActiveTab('add')} />
               </>
             ) : (
               <>
-                <SidebarLink icon={Activity} label="Pelacakan" active={activeTab === 'orders'} onClick={() => setActiveTab('orders')} />
+                <SidebarLink icon={Activity} label="Lacak Status" active={activeTab === 'orders'} onClick={() => setActiveTab('orders')} />
                 <SidebarLink icon={PlusCircle} label="Buat Order" active={activeTab === 'add'} onClick={() => setActiveTab('add')} />
               </>
             )}
           </nav>
-          <div className="mt-auto space-y-4">
+          
+          <div className="mt-auto pt-10 space-y-6 relative z-10">
             {role === 'CUSTOMER' && (
-              <div className="bg-blue-600/50 p-4 rounded-2xl border border-blue-500/30">
-                <p className="text-[10px] font-black text-blue-200 uppercase mb-2">Login Pelanggan</p>
-                <p className="font-bold truncate text-sm">{customerPhone}</p>
+              <div className="bg-white/5 p-6 rounded-[1.5rem] border border-white/5 backdrop-blur-sm">
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Pelanggan</p>
+                <p className="font-black truncate text-sm text-blue-400">{customerPhone}</p>
               </div>
             )}
-            <button onClick={handleLogout} className="flex items-center gap-3 text-red-100 font-bold hover:text-white"><LogOut className="w-5 h-5" /> Keluar</button>
+            <button onClick={handleLogout} className="w-full flex items-center gap-4 px-6 py-4 rounded-2xl transition-all font-bold text-red-400 hover:bg-red-400/10"><LogOut className="w-5 h-5" /> Keluar Aplikasi</button>
           </div>
         </div>
       </div>
 
-      <div className="md:pl-64 flex flex-col flex-1">
-        <header className="sticky top-0 z-40 bg-white/60 backdrop-blur-xl border-b p-6 flex items-center justify-between">
+      <div className="md:pl-72 flex flex-col flex-1">
+        {/* Header Responsif */}
+        <header className="sticky top-0 z-40 bg-white/70 backdrop-blur-2xl border-b border-slate-100 p-6 md:p-10 flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-black text-gray-800 tracking-tight">
-              {role === 'ADMIN' ? 'Control Panel Admin' : 'Dashboard Pelanggan'}
+            <h2 className="text-2xl md:text-4xl font-black text-slate-900 tracking-tighter">
+              {role === 'ADMIN' ? 'Control Panel' : 'Dashboard Saya'}
             </h2>
-            {role === 'CUSTOMER' && <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mt-1 flex items-center gap-2"><ZapIcon className="w-3 h-3 pulse" /> Live Tracking Status Aktif</p>}
+            {role === 'CUSTOMER' && <p className="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] mt-2 flex items-center gap-2"><ZapIcon className="w-3.5 h-3.5 pulse" /> Koneksi Real-time Aktif</p>}
           </div>
-          <div className="flex items-center gap-4">
-            <div className={`flex items-center gap-2 px-3 py-1 border rounded-full text-[10px] font-black uppercase tracking-widest ${dbStatus === 'live' ? 'bg-green-50 border-green-200 text-green-600' : 'bg-red-50 border-red-200 text-red-600'}`}>
-              <Zap className={`w-3 h-3 ${dbStatus === 'live' ? 'pulse' : ''}`} />
-              <span className="hidden sm:inline">{dbStatus === 'live' ? 'Live' : 'Offline'}</span>
+          <div className="flex items-center gap-3 md:gap-5">
+            <div className={`hidden sm:flex items-center gap-2.5 px-4 py-2 bg-white border rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-sm ${dbStatus === 'live' ? 'border-green-100 text-green-600' : 'border-red-100 text-red-600'}`}>
+              <Zap className={`w-3.5 h-3.5 ${dbStatus === 'live' ? 'pulse' : ''}`} />
+              <span>{dbStatus === 'live' ? 'Live' : 'Offline'}</span>
             </div>
-            <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-3 bg-white shadow-sm border rounded-xl hover:bg-gray-50 transition-colors">{isDarkMode ? <Sun className="text-orange-500" /> : <Moon className="text-blue-600" />}</button>
-            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-black shadow-lg shadow-blue-100">{role === 'ADMIN' ? 'A' : 'P'}</div>
+            <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-4 bg-white shadow-sm border border-slate-100 rounded-2xl hover:bg-slate-50 transition-all active:scale-95">
+              {isDarkMode ? <Sun className="w-6 h-6 text-orange-500" /> : <Moon className="w-6 h-6 text-blue-600" />}
+            </button>
+            <div className="w-12 h-12 md:w-14 md:h-14 bg-blue-600 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-lg shadow-blue-100 shrink-0">{role === 'ADMIN' ? 'A' : 'P'}</div>
           </div>
         </header>
 
-        <main className="p-4 md:p-8 max-w-7xl mx-auto w-full pb-32">
+        <main className="p-5 md:p-10 max-w-7xl mx-auto w-full pb-32">
           {activeTab === 'dashboard' && role === 'ADMIN' && (
-            <div className="space-y-8">
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="space-y-10 animate-fade-in">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
                 <StatCard label="Omzet Bulan Ini" value={formatIDR(stats.omzet)} icon={TrendingUp} color="blue" />
-                <StatCard label="Order Selesai" value={stats.completed} icon={CheckCircle2} color="green" />
-                <StatCard label="Dalam Proses" value={stats.process} icon={Clock} color="orange" />
-                <StatCard label="Total Order" value={orders.length} icon={Package} color="purple" />
+                <StatCard label="Selesai" value={stats.completed} icon={CheckCircle2} color="green" />
+                <StatCard label="Diproses" value={stats.process} icon={Clock} color="orange" />
+                <StatCard label="Total" value={orders.length} icon={Package} color="purple" />
               </div>
 
-              <Card className="h-[400px]">
-                <h3 className="text-xl font-bold mb-6">Laporan Pendapatan Mingguan</h3>
+              <Card className="h-[450px]">
+                <h3 className="text-2xl font-black mb-8 tracking-tight">Tren Pendapatan</h3>
                 <ResponsiveContainer width="100%" height="80%">
                   <AreaChart data={stats.chartData}>
                     <defs><linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#2563eb" stopOpacity={0.2}/><stop offset="95%" stopColor="#2563eb" stopOpacity={0}/></linearGradient></defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee" />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} />
-                    <YAxis axisLine={false} tickLine={false} tickFormatter={(v) => `Rp${v/1000}k`} />
-                    <Tooltip contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)'}} />
-                    <Area type="monotone" dataKey="revenue" stroke="#2563eb" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
+                    <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 800, fill: '#94a3b8'}} />
+                    <YAxis axisLine={false} tickLine={false} tickFormatter={(v) => `Rp${v/1000}k`} tick={{fontSize: 10, fontWeight: 800, fill: '#94a3b8'}} />
+                    <Tooltip contentStyle={{borderRadius: '24px', border: 'none', boxShadow: '0 20px 50px rgba(0,0,0,0.1)', padding: '20px'}} />
+                    <Area type="monotone" dataKey="revenue" stroke="#2563eb" strokeWidth={5} fillOpacity={1} fill="url(#colorRevenue)" />
                   </AreaChart>
                 </ResponsiveContainer>
               </Card>
@@ -844,51 +842,22 @@ export default function App() {
           {activeTab === 'orders' && (
             <div className="space-y-10 animate-fade-in">
               {role === 'CUSTOMER' && customerStats && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="relative group overflow-hidden bg-blue-600 rounded-[2.5rem] p-8 text-white shadow-2xl shadow-blue-100 transition-all hover:-translate-y-1">
-                    <div className="absolute -right-6 -bottom-6 opacity-10 group-hover:scale-110 transition-transform duration-700">
-                       <Package className="w-40 h-40" />
-                    </div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-70 mb-2">Total Riwayat</p>
-                    <div className="flex items-baseline gap-2">
-                       <p className="text-6xl font-black">{customerStats.total}</p>
-                       <span className="text-sm font-bold opacity-60">Pesanan</span>
-                    </div>
-                  </div>
-                  
-                  <div className="relative group overflow-hidden bg-white rounded-[2.5rem] p-8 border border-orange-100 shadow-xl shadow-orange-50/50 transition-all hover:-translate-y-1">
-                    <div className="absolute -right-6 -bottom-6 opacity-5 group-hover:scale-110 transition-transform duration-700">
-                       <RefreshCcw className="w-40 h-40 text-orange-500" />
-                    </div>
-                    <p className="text-[10px] font-black text-orange-400 uppercase tracking-[0.2em] mb-2">Aktif Diproses</p>
-                    <div className="flex items-baseline gap-2">
-                       <p className="text-6xl font-black text-orange-500">{customerStats.active}</p>
-                       <span className="text-sm font-bold text-gray-400">Sedang Dicuci</span>
-                    </div>
-                  </div>
-
-                  <div className="relative group overflow-hidden bg-white rounded-[2.5rem] p-8 border border-green-100 shadow-xl shadow-green-50/50 transition-all hover:-translate-y-1">
-                    <div className="absolute -right-6 -bottom-6 opacity-5 group-hover:scale-110 transition-transform duration-700">
-                       <CheckCircle2 className="w-40 h-40 text-green-500" />
-                    </div>
-                    <p className="text-[10px] font-black text-green-600 uppercase tracking-[0.2em] mb-2">Selesai ✅</p>
-                    <div className="flex items-baseline gap-2">
-                       <p className="text-6xl font-black text-green-700">{customerStats.done}</p>
-                       <span className="text-sm font-bold text-gray-400">Siap Ambil</span>
-                    </div>
-                  </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-10">
+                  <CustomerMetric bg="bg-blue-600 shadow-blue-100" icon={Package} label="Total Pesanan" value={customerStats.total} sub="Seluruh Riwayat" />
+                  <CustomerMetric bg="bg-white border-2 border-orange-100" icon={RefreshCcw} label="Sedang Dicuci" value={customerStats.active} sub="Aktif Sekarang" color="text-orange-500" iconColor="text-orange-400" />
+                  <CustomerMetric bg="bg-white border-2 border-green-100" icon={CheckCircle2} label="Sudah Selesai" value={customerStats.done} sub="Siap Diambil" color="text-green-600" iconColor="text-green-400" />
                 </div>
               )}
 
               <div className="flex flex-col xl:flex-row gap-6 justify-between items-center">
                 <div className="flex items-center gap-4 flex-1 w-full">
                   <div className="relative flex-1 group">
-                    <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5 group-focus-within:text-blue-500 transition-colors" />
-                    <input type="text" placeholder={role === 'ADMIN' ? "Cari Pelanggan atau No Nota..." : "Cari di daftar pesanan Anda..."} className="w-full pl-14 pr-8 py-5 bg-white border border-gray-100 rounded-[2rem] outline-none shadow-md focus:ring-4 focus:ring-blue-100 transition-all text-lg font-medium" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                    <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 w-6 h-6 group-focus-within:text-blue-500 transition-colors" />
+                    <input type="text" placeholder={role === 'ADMIN' ? "Cari nama atau no nota..." : "Cari pesanan saya..."} className="w-full pl-16 pr-8 py-6 bg-white border border-slate-100 rounded-[2rem] outline-none shadow-sm focus:ring-4 focus:ring-blue-100 transition-all text-lg font-bold" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
                   </div>
                   {role === 'CUSTOMER' && (
-                    <button onClick={() => initializeSupabase()} className="p-5 bg-blue-600 rounded-[1.5rem] hover:bg-blue-700 text-white shadow-xl shadow-blue-200 transition-all active:scale-95 group" title="Refresh Data">
-                      <RefreshCcw className={`w-6 h-6 ${dbStatus === 'syncing' ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} />
+                    <button onClick={() => initializeSupabase()} className="p-6 bg-blue-600 rounded-[1.5rem] hover:bg-blue-700 text-white shadow-xl shadow-blue-200 transition-all active:scale-90 group" title="Refresh">
+                      <RefreshCcw className={`w-7 h-7 ${dbStatus === 'syncing' ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} />
                     </button>
                   )}
                 </div>
@@ -896,104 +865,24 @@ export default function App() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {filteredOrders.map(order => (
-                  <Card key={order.id} className="cursor-pointer hover:scale-[1.02] transition-all border-none bg-white/70 backdrop-blur-xl shadow-xl hover:shadow-2xl group relative overflow-hidden flex flex-col min-h-[400px]" onClick={() => setSelectedOrder(order)}>
-                    {/* Visual Status Indicator Top Bar */}
-                    <div className={`absolute top-0 left-0 right-0 h-1.5 ${order.status === 'Baru' ? 'bg-blue-500' : order.status === 'Proses' ? 'bg-orange-500' : 'bg-green-500'}`}></div>
-                    
-                    <div className="flex justify-between items-start mb-6">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{order.notaNumber}</p>
-                           {order.status === 'Proses' && <span className="w-2 h-2 bg-orange-400 rounded-full pulse"></span>}
-                        </div>
-                        <h4 className="text-2xl font-black text-gray-900 leading-tight">{order.customerName}</h4>
-                      </div>
-                      <div className={`px-3 py-1.5 rounded-xl text-[10px] font-black text-white uppercase shadow-lg ${order.status === 'Baru' ? 'bg-blue-600 shadow-blue-100' : order.status === 'Proses' ? 'bg-orange-500 shadow-orange-100' : 'bg-green-600 shadow-green-100'}`}>
-                        {order.status}
-                      </div>
-                    </div>
-                    
-                    {/* CUSTOMER STEPPER OPTIMIZED */}
-                    <div className="mb-8 p-4 bg-gray-50/50 rounded-3xl border border-gray-100/50">
-                      <div className="flex justify-between items-center relative px-2">
-                        {/* Track Background */}
-                        <div className="absolute top-1/2 -translate-y-1/2 left-4 right-4 h-1 bg-gray-200 rounded-full z-0"></div>
-                        {/* Active Track */}
-                        <div className={`absolute top-1/2 -translate-y-1/2 left-4 h-1 bg-blue-500 rounded-full z-0 transition-all duration-1000 ease-in-out`} style={{ width: order.status === 'Baru' ? '0%' : order.status === 'Proses' ? '50%' : 'calc(100% - 32px)' }}></div>
-                        
-                        {/* Step 1: Diterima */}
-                        <div className="relative z-10 flex flex-col items-center">
-                          <div className={`w-10 h-10 rounded-2xl flex items-center justify-center border-2 transition-all ${order.status !== 'Baru' ? 'bg-blue-500 border-blue-500 text-white shadow-lg shadow-blue-100' : 'bg-white border-blue-500 text-blue-500'}`}>
-                            {order.status !== 'Baru' ? <CheckCircle2 className="w-5 h-5" /> : <Package className="w-5 h-5" />}
-                          </div>
-                          <span className="text-[8px] font-black text-blue-500 mt-2 uppercase">Diterima</span>
-                        </div>
-
-                        {/* Step 2: Diproses */}
-                        <div className="relative z-10 flex flex-col items-center">
-                          <div className={`w-10 h-10 rounded-2xl flex items-center justify-center border-2 transition-all ${order.status === 'Selesai' ? 'bg-blue-500 border-blue-500 text-white shadow-lg shadow-blue-100' : order.status === 'Proses' ? 'bg-orange-500 border-orange-500 text-white shadow-lg shadow-orange-100' : 'bg-white border-gray-200 text-gray-300'}`}>
-                            {order.status === 'Selesai' ? <CheckCircle2 className="w-5 h-5" /> : order.status === 'Proses' ? <RefreshCcw className="w-5 h-5 animate-spin" /> : <WashingMachine className="w-5 h-5" />}
-                          </div>
-                          <span className={`text-[8px] font-black mt-2 uppercase ${order.status === 'Proses' ? 'text-orange-500' : 'text-gray-300'}`}>Diproses</span>
-                        </div>
-
-                        {/* Step 3: Selesai */}
-                        <div className="relative z-10 flex flex-col items-center">
-                          <div className={`w-10 h-10 rounded-2xl flex items-center justify-center border-2 transition-all ${order.status === 'Selesai' ? 'bg-green-500 border-green-500 text-white shadow-lg shadow-green-100' : 'bg-white border-gray-200 text-gray-300'}`}>
-                            {order.status === 'Selesai' ? <Sparkles className="w-5 h-5" /> : <Shirt className="w-5 h-5" />}
-                          </div>
-                          <span className={`text-[8px] font-black mt-2 uppercase ${order.status === 'Selesai' ? 'text-green-600' : 'text-gray-300'}`}>Selesai</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex-1 space-y-4">
-                      <div className="grid grid-cols-2 gap-3">
-                         <div className="p-3 bg-white rounded-2xl border border-gray-50 flex items-center gap-3">
-                            <div className="p-2 bg-blue-50 rounded-xl text-blue-600"><Shirt className="w-4 h-4" /></div>
-                            <div>
-                               <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Layanan</p>
-                               <p className="text-xs font-bold text-gray-700 truncate">{order.serviceType}</p>
-                            </div>
-                         </div>
-                         <div className="p-3 bg-white rounded-2xl border border-gray-50 flex items-center gap-3">
-                            <div className="p-2 bg-purple-50 rounded-xl text-purple-600"><Package className="w-4 h-4" /></div>
-                            <div>
-                               <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Berat</p>
-                               <p className="text-xs font-bold text-gray-700">{order.weight} Kg</p>
-                            </div>
-                         </div>
-                      </div>
-                      <p className="text-xs font-bold text-gray-500 flex items-center gap-2 px-1"><Clock className="w-4 h-4 text-blue-300" /> Masuk pada {new Date(order.createdAt).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</p>
-                    </div>
-                    
-                    <div className="flex items-center justify-between pt-6 mt-6 border-t border-gray-50">
-                      <div className="space-y-0.5">
-                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Total Bayar</p>
-                        <p className="text-2xl font-black text-blue-700 tracking-tight">{formatIDR(order.totalPrice)}</p>
-                      </div>
-                      <button className="flex items-center gap-2 bg-blue-50 text-blue-600 px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm">
-                         DETAIL <ArrowUpRight className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </Card>
+                  <OrderCard key={order.id} order={order} role={role} onClick={() => setSelectedOrder(order)} />
                 ))}
                 
                 {filteredOrders.length === 0 && (
-                  <div className="col-span-full py-32 text-center animate-fade-in">
-                    <div className="relative w-32 h-32 mx-auto mb-8">
-                       <div className="absolute inset-0 bg-blue-100/50 rounded-full blur-2xl animate-pulse"></div>
-                       <div className="relative w-full h-full bg-white rounded-[3rem] flex items-center justify-center border shadow-sm">
-                          <FilterX className="w-16 h-16 text-blue-200" />
+                  <div className="col-span-full py-32 text-center animate-zoom-in">
+                    <div className="relative w-40 h-40 mx-auto mb-10">
+                       <div className="absolute inset-0 bg-blue-100/40 rounded-full blur-3xl animate-pulse"></div>
+                       <div className="relative w-full h-full bg-white rounded-[4rem] flex items-center justify-center border shadow-inner">
+                          <FilterX className="w-20 h-20 text-blue-100" />
                        </div>
                     </div>
-                    <h3 className="text-3xl font-black text-gray-800 tracking-tight">Belum ada pesanan</h3>
-                    <p className="text-gray-500 font-medium max-w-sm mx-auto mt-4 leading-relaxed">
-                      {role === 'CUSTOMER' ? `Sepertinya nomor ${customerPhone} belum memiliki pesanan aktif di sistem kami.` : 'Data pesanan yang Anda cari tidak ditemukan.'}
+                    <h3 className="text-4xl font-black text-slate-900 tracking-tighter">Data Masih Kosong</h3>
+                    <p className="text-slate-400 font-bold max-w-sm mx-auto mt-4 leading-relaxed px-6">
+                      {role === 'CUSTOMER' ? `Belum ada riwayat pesanan aktif untuk nomor ${customerPhone}.` : 'Tidak ditemukan pesanan dengan kriteria pencarian ini.'}
                     </p>
                     {role === 'CUSTOMER' && (
-                      <button onClick={() => setActiveTab('add')} className="mt-10 px-10 py-5 bg-blue-600 text-white rounded-[2rem] font-black text-lg shadow-xl shadow-blue-200 hover:-translate-y-1 active:scale-95 transition-all flex items-center justify-center gap-3 mx-auto">
-                        BUAT PESANAN SEKARANG <PlusCircle className="w-6 h-6" />
+                      <button onClick={() => setActiveTab('add')} className="mt-12 px-12 py-6 bg-blue-600 text-white rounded-[2rem] font-black text-xl shadow-2xl shadow-blue-200 hover:-translate-y-2 active:scale-95 transition-all flex items-center justify-center gap-4 mx-auto">
+                        BUAT ORDER BARU <PlusCircle className="w-8 h-8" />
                       </button>
                     )}
                   </div>
@@ -1004,33 +893,117 @@ export default function App() {
         </main>
       </div>
 
-      <div className="md:hidden fixed bottom-6 left-6 right-6 h-20 bg-white/90 backdrop-blur-3xl rounded-[2.5rem] border shadow-2xl z-50 flex items-center px-6 justify-around">
-        <button onClick={() => setActiveTab(role === 'ADMIN' ? 'dashboard' : 'orders')} className={`flex flex-col items-center gap-1.5 transition-all duration-300 ${activeTab === (role === 'ADMIN' ? 'dashboard' : 'orders') ? 'text-blue-600 scale-110' : 'text-gray-400 hover:text-gray-600'}`}>
-          <div className={`p-2 rounded-xl ${activeTab === (role === 'ADMIN' ? 'dashboard' : 'orders') ? 'bg-blue-50' : ''}`}>
-            {role === 'ADMIN' ? <LayoutDashboard className="w-6 h-6" /> : <Activity className="w-6 h-6" />}
+      {/* Navigasi Mobile (Bawah) */}
+      <div className="md:hidden fixed bottom-8 left-6 right-6 h-20 bg-white/80 backdrop-blur-3xl rounded-[2.5rem] border border-white shadow-2xl z-50 flex items-center px-6 justify-around">
+        <MobileNavItem onClick={() => setActiveTab(role === 'ADMIN' ? 'dashboard' : 'orders')} active={activeTab === (role === 'ADMIN' ? 'dashboard' : 'orders')} icon={role === 'ADMIN' ? LayoutDashboard : Activity} label={role === 'ADMIN' ? 'Home' : 'Lacak'} />
+        {role === 'ADMIN' && <MobileNavItem onClick={() => setActiveTab('orders')} active={activeTab === 'orders'} icon={ClipboardList} label="Data" />}
+        <MobileNavItem onClick={() => setActiveTab('add')} active={activeTab === 'add'} icon={PlusCircle} label="Tambah" />
+        <MobileNavItem onClick={handleLogout} active={false} icon={LogOut} label="Keluar" danger />
+      </div>
+    </div>
+  );
+}
+
+function MobileNavItem({ onClick, active, icon: Icon, label, danger }: any) {
+  return (
+    <button onClick={onClick} className={`flex flex-col items-center gap-1.5 transition-all duration-300 ${active ? 'text-blue-600 scale-110' : danger ? 'text-red-400' : 'text-slate-400'}`}>
+      <div className={`p-2.5 rounded-2xl ${active ? 'bg-blue-50 shadow-sm shadow-blue-100' : ''}`}>
+        <Icon className="w-6 h-6" />
+      </div>
+      <span className="text-[9px] font-black uppercase tracking-tighter">{label}</span>
+    </button>
+  );
+}
+
+function CustomerMetric({ bg, icon: Icon, label, value, sub, color = "text-white", iconColor = "text-white/30" }: any) {
+  return (
+    <div className={`relative group overflow-hidden rounded-[2.5rem] p-10 transition-all hover:-translate-y-2 ${bg}`}>
+      <div className={`absolute -right-8 -bottom-8 opacity-10 transition-transform duration-1000 group-hover:scale-125 ${iconColor}`}>
+         <Icon className="w-48 h-48" />
+      </div>
+      <p className={`text-[11px] font-black uppercase tracking-[0.25em] mb-3 opacity-60 ${color}`}>{label}</p>
+      <div className="flex items-baseline gap-3">
+         <p className={`text-7xl font-black tracking-tighter ${color}`}>{value}</p>
+         <span className={`text-sm font-black opacity-40 uppercase ${color}`}>{sub}</span>
+      </div>
+    </div>
+  );
+}
+
+function OrderCard({ order, role, onClick }: any) {
+  const isSelesai = order.status === 'Selesai';
+  const isProses = order.status === 'Proses';
+  
+  return (
+    <Card className="cursor-pointer hover:scale-[1.03] active:scale-95 group relative overflow-hidden flex flex-col min-h-[420px]" onClick={onClick}>
+      <div className={`absolute top-0 left-0 right-0 h-2 ${order.status === 'Baru' ? 'bg-blue-500' : isProses ? 'bg-orange-500' : 'bg-green-500'}`}></div>
+      
+      <div className="flex justify-between items-start mb-8">
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2">
+             <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em]">{order.notaNumber}</p>
+             {isProses && <span className="w-2.5 h-2.5 bg-orange-400 rounded-full animate-pulse shadow-[0_0_10px_rgba(251,146,60,0.5)]"></span>}
           </div>
-          <span className="text-[9px] font-black uppercase tracking-tighter">{role === 'ADMIN' ? 'Dashboard' : 'Lacak'}</span>
-        </button>
-        {role === 'ADMIN' && (
-          <button onClick={() => setActiveTab('orders')} className={`flex flex-col items-center gap-1.5 transition-all duration-300 ${activeTab === 'orders' ? 'text-blue-600 scale-110' : 'text-gray-400 hover:text-gray-600'}`}>
-            <div className={`p-2 rounded-xl ${activeTab === 'orders' ? 'bg-blue-50' : ''}`}>
-              <ClipboardList className="w-6 h-6" />
-            </div>
-            <span className="text-[9px] font-black uppercase tracking-tighter">Daftar</span>
-          </button>
-        )}
-        <button onClick={() => setActiveTab('add')} className={`flex flex-col items-center gap-1.5 transition-all duration-300 ${activeTab === 'add' ? 'text-blue-600 scale-110' : 'text-gray-400 hover:text-gray-600'}`}>
-          <div className={`p-2 rounded-xl ${activeTab === 'add' ? 'bg-blue-50' : ''}`}>
-            <PlusCircle className="w-6 h-6" />
-          </div>
-          <span className="text-[9px] font-black uppercase tracking-tighter">Tambah</span>
-        </button>
-        <button onClick={handleLogout} className="flex flex-col items-center gap-1.5 text-red-400 hover:text-red-500 active:scale-95 transition-all">
-          <div className="p-2">
-            <LogOut className="w-6 h-6" />
-          </div>
-          <span className="text-[9px] font-black uppercase tracking-tighter">Keluar</span>
-        </button>
+          <h4 className="text-3xl font-black text-slate-900 leading-none tracking-tight">{order.customerName}</h4>
+        </div>
+        <div className={`px-4 py-2 rounded-2xl text-[10px] font-black text-white uppercase tracking-widest shadow-xl transition-transform group-hover:scale-110 ${order.status === 'Baru' ? 'bg-blue-600 shadow-blue-100' : isProses ? 'bg-orange-500 shadow-orange-100' : 'bg-green-600 shadow-green-100'}`}>
+          {order.status}
+        </div>
+      </div>
+      
+      <div className="mb-10 p-5 bg-slate-50/80 rounded-[2rem] border border-slate-100/50">
+        <div className="flex justify-between items-center relative px-3">
+          <div className="absolute top-1/2 -translate-y-1/2 left-5 right-5 h-1.5 bg-slate-200 rounded-full z-0"></div>
+          <div className={`absolute top-1/2 -translate-y-1/2 left-5 h-1.5 bg-blue-500 rounded-full z-0 transition-all duration-1000 ease-in-out`} style={{ width: order.status === 'Baru' ? '0%' : isProses ? '50%' : 'calc(100% - 40px)' }}></div>
+          
+          <Step active={true} done={!order.status.includes('Baru')} icon={Package} label="Terima" />
+          <Step active={!order.status.includes('Baru')} done={isSelesai} icon={isProses ? RefreshCcw : WashingMachine} label="Cuci" animating={isProses} />
+          <Step active={isSelesai} done={isSelesai} icon={isSelesai ? Sparkles : CheckCircle2} label="Selesai" />
+        </div>
+      </div>
+
+      <div className="flex-1 space-y-5">
+        <div className="grid grid-cols-2 gap-4">
+           <MiniStat icon={Shirt} val={order.serviceType} label="Tipe" />
+           <MiniStat icon={Package} val={`${order.weight} Kg`} label="Berat" />
+        </div>
+        <div className="flex items-center gap-3 px-1 text-slate-400">
+           <Calendar className="w-4 h-4" />
+           <span className="text-xs font-bold uppercase tracking-wider">{new Date(order.createdAt).toLocaleDateString('id-ID', {day: 'numeric', month: 'short', year: 'numeric'})}</span>
+        </div>
+      </div>
+      
+      <div className="flex items-center justify-between pt-8 mt-8 border-t border-slate-50">
+        <div className="space-y-1">
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Bayar</p>
+          <p className="text-3xl font-black text-blue-700 tracking-tighter">{formatIDR(order.totalPrice)}</p>
+        </div>
+        <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 transition-all group-hover:bg-blue-600 group-hover:text-white group-hover:rotate-45 shadow-sm">
+           <ArrowUpRight className="w-7 h-7" />
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function Step({ active, done, icon: Icon, label, animating }: any) {
+  return (
+    <div className="relative z-10 flex flex-col items-center">
+      <div className={`w-12 h-12 rounded-[1.25rem] flex items-center justify-center border-4 transition-all duration-500 ${done ? 'bg-blue-500 border-white text-white shadow-xl shadow-blue-100' : active ? 'bg-white border-blue-500 text-blue-500 shadow-md' : 'bg-white border-slate-200 text-slate-300'}`}>
+        <Icon className={`w-6 h-6 ${animating ? 'animate-spin' : ''}`} />
+      </div>
+      <span className={`text-[9px] font-black mt-3 uppercase tracking-wider transition-colors ${active ? 'text-blue-600' : 'text-slate-300'}`}>{label}</span>
+    </div>
+  );
+}
+
+function MiniStat({ icon: Icon, val, label }: any) {
+  return (
+    <div className="p-4 bg-white rounded-2xl border border-slate-50 flex items-center gap-4 group-hover:bg-blue-50/30 transition-colors">
+      <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl"><Icon className="w-5 h-5" /></div>
+      <div className="min-w-0">
+        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{label}</p>
+        <p className="text-xs font-black text-slate-800 truncate leading-tight">{val}</p>
       </div>
     </div>
   );
@@ -1038,8 +1011,9 @@ export default function App() {
 
 function SidebarLink({ icon: Icon, label, active, onClick }: any) {
   return (
-    <button onClick={onClick} className={`w-full flex items-center gap-4 px-6 py-5 rounded-[1.5rem] transition-all duration-300 ${active ? 'bg-white text-blue-700 font-black shadow-xl shadow-blue-900/10 scale-[1.05]' : 'text-blue-100 hover:bg-white/10 font-bold hover:translate-x-1'}`}>
-      <Icon className="w-5 h-5" /><span>{label}</span>
+    <button onClick={onClick} className={`w-full flex items-center gap-5 px-7 py-5 rounded-[2rem] transition-all duration-300 ${active ? 'bg-white text-blue-700 font-black shadow-xl shadow-blue-500/10 scale-[1.05]' : 'text-blue-100/60 hover:bg-white/10 font-bold hover:translate-x-2 hover:text-white'}`}>
+      <Icon className="w-6 h-6" />
+      <span className="text-lg tracking-tight">{label}</span>
     </button>
   );
 }
@@ -1047,10 +1021,10 @@ function SidebarLink({ icon: Icon, label, active, onClick }: any) {
 function StatCard({ label, value, icon: Icon, color }: any) {
   const colors: any = { blue: 'bg-blue-600 shadow-blue-100', green: 'bg-green-600 shadow-green-100', orange: 'bg-orange-600 shadow-orange-100', purple: 'bg-purple-600 shadow-purple-100' };
   return (
-    <Card className="hover:scale-[1.03] transition-all border-none shadow-sm group">
-      <div className={`w-12 h-12 rounded-[1.25rem] flex items-center justify-center text-white mb-5 transition-transform group-hover:rotate-12 ${colors[color]}`}><Icon className="w-6 h-6" /></div>
-      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{label}</p>
-      <p className="text-3xl font-black text-gray-800 mt-2 tracking-tight">{value}</p>
+    <Card className="hover:scale-[1.05] transition-all border-none shadow-sm group">
+      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white mb-6 transition-transform group-hover:rotate-12 ${colors[color]}`}><Icon className="w-7 h-7" /></div>
+      <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">{label}</p>
+      <p className="text-4xl font-black text-slate-900 mt-2 tracking-tighter">{value}</p>
     </Card>
   );
 }
@@ -1086,70 +1060,74 @@ function OrderForm({ role, prefilledPhone, onAdd }: any) {
   };
 
   return (
-    <div className="max-w-3xl mx-auto animate-zoom-in">
-      <Card className="p-10 md:p-12 shadow-2xl border-none relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-40 h-40 bg-blue-50 rounded-full blur-3xl -mr-20 -mt-20"></div>
-        <div className="flex items-center gap-4 mb-12">
-           <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-blue-100">
-              <PlusCircle className="w-8 h-8" />
+    <div className="max-w-4xl mx-auto animate-zoom-in">
+      <Card className="p-8 md:p-14 shadow-2xl border-none relative overflow-hidden bg-white">
+        <div className="absolute top-0 right-0 w-60 h-60 bg-blue-50 rounded-full blur-[80px] -mr-32 -mt-32"></div>
+        <div className="flex flex-col md:flex-row md:items-center gap-6 mb-16 relative z-10">
+           <div className="w-16 h-16 bg-blue-600 rounded-[1.75rem] flex items-center justify-center text-white shadow-2xl shadow-blue-100">
+              <PlusCircle className="w-10 h-10" />
            </div>
            <div>
-              <h3 className="text-3xl font-black text-gray-900 tracking-tight">Formulir Pesanan</h3>
-              <p className="text-sm font-bold text-gray-400">Silakan lengkapi detail cucian Anda</p>
+              <h3 className="text-4xl font-black text-slate-900 tracking-tighter">Registrasi Order</h3>
+              <p className="text-base font-bold text-slate-400 mt-1">Lengkapi rincian layanan laundry</p>
            </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Nama Lengkap</label>
-              <input required className="w-full px-6 py-5 border border-gray-100 bg-gray-50/50 rounded-[1.5rem] outline-none focus:bg-white focus:ring-4 focus:ring-blue-100 transition-all font-bold text-gray-700" value={formData.customerName} onChange={(e) => setFormData({...formData, customerName: e.target.value})} placeholder="Nama Anda" />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">WhatsApp Aktif</label>
-              <input required className="w-full px-6 py-5 border border-gray-100 bg-gray-50/50 rounded-[1.5rem] outline-none focus:bg-white focus:ring-4 focus:ring-blue-100 transition-all font-bold text-gray-700" value={formData.customerPhone} onChange={(e) => setFormData({...formData, customerPhone: e.target.value})} placeholder="Nomor HP" />
-            </div>
+        <form onSubmit={handleSubmit} className="space-y-10 relative z-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+            <FormInput label="Nama Lengkap" val={formData.customerName} set={(v:string)=>setFormData({...formData, customerName:v})} ph="Nama Pelanggan" req />
+            <FormInput label="Nomor WhatsApp" val={formData.customerPhone} set={(v:string)=>setFormData({...formData, customerPhone:v})} ph="081234..." req />
           </div>
 
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Alamat Penjemputan / Pengantaran</label>
-            <textarea required rows={2} className="w-full px-6 py-5 border border-gray-100 bg-gray-50/50 rounded-[1.5rem] outline-none focus:bg-white focus:ring-4 focus:ring-blue-100 transition-all font-medium text-gray-700" value={formData.customerAddress} onChange={(e) => setFormData({...formData, customerAddress: e.target.value})} placeholder="Masukkan alamat lengkap" />
+          <div className="space-y-3">
+            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Alamat Penjemputan / Antar</label>
+            <textarea required rows={3} className="w-full px-8 py-6 border border-slate-100 bg-slate-50/50 rounded-[2rem] outline-none focus:bg-white focus:ring-4 focus:ring-blue-100 transition-all font-semibold text-slate-700" value={formData.customerAddress} onChange={(e) => setFormData({...formData, customerAddress: e.target.value})} placeholder="Input alamat lengkap..." />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Jenis Layanan</label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+            <div className="space-y-3">
+              <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Jenis Layanan Laundry</label>
               <div className="relative">
-                <select className="w-full px-6 py-5 border border-gray-100 bg-gray-50/50 rounded-[1.5rem] outline-none focus:bg-white focus:ring-4 focus:ring-blue-100 transition-all font-black text-blue-600 appearance-none cursor-pointer" value={formData.serviceType} onChange={(e) => setFormData({...formData, serviceType: e.target.value as ServiceType})}>
+                <select className="w-full px-8 py-6 border border-slate-100 bg-slate-50/50 rounded-[2rem] outline-none focus:bg-white focus:ring-4 focus:ring-blue-100 transition-all font-black text-blue-600 appearance-none cursor-pointer" value={formData.serviceType} onChange={(e) => setFormData({...formData, serviceType: e.target.value as ServiceType})}>
                   {Object.keys(SERVICE_PRICES).map(s => <option key={s} value={s}>{s} • {formatIDR(SERVICE_PRICES[s as ServiceType])}</option>)}
                 </select>
-                <ChevronRight className="absolute right-6 top-1/2 -translate-y-1/2 rotate-90 text-blue-400 pointer-events-none" />
+                <div className="absolute right-8 top-1/2 -translate-y-1/2 pointer-events-none text-blue-400"><ChevronRight className="w-6 h-6 rotate-90" /></div>
               </div>
             </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Berat (Kg) atau Qty Unit</label>
+            <div className="space-y-3">
+              <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Jumlah Berat (Kg) / Unit</label>
               <div className="relative">
-                 <input required type="number" min="0.1" step="0.1" className="w-full px-6 py-5 border border-gray-100 bg-gray-50/50 rounded-[1.5rem] outline-none font-black text-3xl focus:bg-white focus:ring-4 focus:ring-blue-100 transition-all text-gray-800" value={formData.weight || ''} onChange={(e) => setFormData({...formData, weight: parseFloat(e.target.value) || 0})} placeholder="0.0" />
-                 <span className="absolute right-6 top-1/2 -translate-y-1/2 font-black text-gray-300 uppercase tracking-widest pointer-events-none">Input</span>
+                 <input required type="number" min="0.1" step="0.1" className="w-full px-8 py-6 border border-slate-100 bg-slate-50/50 rounded-[2rem] outline-none font-black text-4xl focus:bg-white focus:ring-4 focus:ring-blue-100 transition-all text-slate-800" value={formData.weight || ''} onChange={(e) => setFormData({...formData, weight: parseFloat(e.target.value) || 0})} placeholder="0.0" />
+                 <span className="absolute right-8 top-1/2 -translate-y-1/2 font-black text-slate-300 uppercase tracking-[0.2em] pointer-events-none text-xs">KG / Unit</span>
               </div>
             </div>
           </div>
 
-          <div className="p-10 bg-blue-600 rounded-[3rem] flex flex-col md:flex-row items-center justify-between text-white gap-8 shadow-2xl shadow-blue-200">
-            <div className="text-center md:text-left">
-               <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-70 mb-2">Estimasi Total Tagihan</p>
-               <p className="text-6xl font-black tracking-tighter">{formatIDR(total)}</p>
+          <div className="mt-12 p-10 md:p-14 bg-slate-900 rounded-[3rem] flex flex-col lg:flex-row items-center justify-between text-white gap-10 shadow-3xl overflow-hidden relative group">
+            <div className="absolute -left-10 -bottom-10 opacity-5 group-hover:scale-110 transition-transform duration-1000"><Coins className="w-60 h-60" /></div>
+            <div className="text-center lg:text-left relative z-10">
+               <p className="text-[11px] font-black uppercase tracking-[0.3em] opacity-40 mb-3">Estimasi Tagihan Akhir</p>
+               <p className="text-7xl font-black tracking-tighter text-blue-400">{formatIDR(total)}</p>
             </div>
             <button 
               type="submit" 
               disabled={total <= 0} 
-              className="bg-white text-blue-700 hover:bg-gray-50 disabled:bg-white/50 disabled:cursor-not-allowed w-full md:w-auto px-12 py-5 text-xl font-black rounded-[2rem] shadow-xl transition-all active:scale-95 flex items-center justify-center gap-3"
+              className="w-full lg:w-auto px-16 py-7 bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-2xl font-black rounded-[2.5rem] shadow-2xl shadow-blue-500/20 transition-all hover:-translate-y-2 active:scale-95 flex items-center justify-center gap-4 relative z-10"
             >
-              DAFTAR SEKARANG <ArrowRight className="w-6 h-6" />
+              KONFIRMASI ORDER <ArrowRight className="w-8 h-8" />
             </button>
           </div>
         </form>
       </Card>
+    </div>
+  );
+}
+
+function FormInput({ label, val, set, ph, req }: any) {
+  return (
+    <div className="space-y-3">
+      <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">{label}</label>
+      <input required={req} className="w-full px-8 py-6 border border-slate-100 bg-slate-50/50 rounded-[2rem] outline-none focus:bg-white focus:ring-4 focus:ring-blue-100 transition-all font-bold text-slate-700 text-lg" value={val} onChange={(e) => set(e.target.value)} placeholder={ph} />
     </div>
   );
 }
