@@ -1,6 +1,8 @@
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
-  
+# Source - https://stackoverflow.com/a/76250083
+# Posted by omzer, modified by community. See post 'Timeline' for change history
+# Retrieved 2026-02-12, License - CC BY-SA 4.0
 
+[[redirects]]
+from = "/*"
+to = "/index.html"
+status = 200
