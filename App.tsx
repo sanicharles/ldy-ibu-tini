@@ -49,7 +49,8 @@ import {
   RefreshCcw,
   SearchCheck,
   Activity,
-  ArrowUpRight
+  ArrowUpRight,
+  Headphones
 } from 'lucide-react';
 import { 
   LineChart, 
@@ -82,6 +83,7 @@ import {
 import { supabase } from './supabase';
 
 const ADMIN_PIN = "2115";
+const OWNER_PHONE = "085695014434"; // Nomor WhatsApp Ibu Tini
 
 // --- Shared Components ---
 
@@ -209,6 +211,11 @@ const OrderModal = ({ order, onClose, isAdmin, onUpdateStatus, onDeleteOrder }: 
     sendWhatsAppMessage(order.customerPhone, msg);
   };
 
+  const handleContactOwner = () => {
+    const msg = `Halo Ibu Tini, saya ${order.customerName} ingin menanyakan status pesanan saya dengan nomor nota ${order.notaNumber}. Terima kasih.`;
+    sendWhatsAppMessage(OWNER_PHONE, msg);
+  };
+
   const statusColors: any = { 
     'Baru': 'bg-blue-600 shadow-blue-200', 
     'Proses': 'bg-orange-500 shadow-orange-200', 
@@ -305,12 +312,15 @@ const OrderModal = ({ order, onClose, isAdmin, onUpdateStatus, onDeleteOrder }: 
           </div>
 
           <div className="p-6 md:p-8 bg-slate-50 border-t flex flex-col gap-4">
-            <div className="grid grid-cols-2 gap-4">
-              <button onClick={generatePDF} className="flex items-center justify-center gap-3 bg-white border border-slate-200 text-slate-700 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all hover:bg-slate-50 active:scale-95 shadow-sm">
-                <Printer className="w-5 h-5" /> NOTA
+            <div className="grid grid-cols-3 gap-3">
+              <button onClick={generatePDF} className="flex items-center justify-center gap-2 bg-white border border-slate-200 text-slate-700 py-4 rounded-2xl font-black text-[9px] uppercase tracking-widest transition-all hover:bg-slate-50 active:scale-95 shadow-sm">
+                <Printer className="w-4 h-4" /> NOTA
               </button>
-              <button onClick={handleContact} className="flex items-center justify-center gap-3 bg-green-50 text-green-700 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all hover:bg-green-100 active:scale-95 shadow-sm border border-green-100">
-                <MessageCircle className="w-5 h-5" /> WA
+              <button onClick={handleContact} className="flex items-center justify-center gap-2 bg-green-50 text-green-700 py-4 rounded-2xl font-black text-[9px] uppercase tracking-widest transition-all hover:bg-green-100 active:scale-95 shadow-sm border border-green-100">
+                <MessageCircle className="w-4 h-4" /> CUSTOMER
+              </button>
+              <button onClick={handleContactOwner} className="flex items-center justify-center gap-2 bg-blue-50 text-blue-700 py-4 rounded-2xl font-black text-[9px] uppercase tracking-widest transition-all hover:bg-blue-100 active:scale-95 shadow-sm border border-blue-100">
+                <Headphones className="w-4 h-4" /> OWNER
               </button>
             </div>
             
@@ -491,6 +501,11 @@ export default function App() {
     const success = await upsertOrderToSupabase(newOrder);
     if (success) {
       setToast({ message: `Pesanan ${newOrder.notaNumber} Berhasil Dibuat!`, type: 'success' });
+      
+      // Kirim konfirmasi ke WhatsApp Owner
+      const msg = `Halo Ibu Tini, saya mengonfirmasi pesanan laundry baru.\n\nNota: *${newOrder.notaNumber}*\nPelanggan: *${newOrder.customerName}*\nLayanan: *${newOrder.serviceType}*\nBerat/Qty: *${newOrder.weight}*\nTotal: *${formatIDR(newOrder.totalPrice)}*\nAlamat: ${newOrder.customerAddress}\n\nTerima kasih!`;
+      sendWhatsAppMessage(OWNER_PHONE, msg);
+      
       setActiveTab('orders');
     } else {
       setToast({ message: "Gagal simpan online, pesanan tersimpan lokal.", type: 'info' });
@@ -783,6 +798,12 @@ export default function App() {
               <div className="bg-white/5 p-6 rounded-[1.5rem] border border-white/5 backdrop-blur-sm">
                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Pelanggan</p>
                 <p className="font-black truncate text-sm text-blue-400">{customerPhone}</p>
+                <button 
+                  onClick={() => sendWhatsAppMessage(OWNER_PHONE, `Halo Ibu Tini, saya ${customerPhone} butuh bantuan.`)}
+                  className="mt-4 w-full flex items-center justify-center gap-2 bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all"
+                >
+                  <MessageCircle className="w-4 h-4" /> Chat Ibu Tini
+                </button>
               </div>
             )}
             <button onClick={handleLogout} className="w-full flex items-center gap-4 px-6 py-4 rounded-2xl transition-all font-bold text-red-400 hover:bg-red-400/10"><LogOut className="w-5 h-5" /> Keluar Aplikasi</button>
