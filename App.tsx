@@ -15,7 +15,7 @@ import {
   Phone,
   FileText,
   TrendingUp,
-  Moon,
+  Moon, 
   Sun,
   X,
   Printer, 
@@ -50,7 +50,10 @@ import {
   SearchCheck,
   Activity,
   ArrowUpRight,
-  Headphones
+  Headphones,
+  BarChart3,
+  PieChart as PieChartIcon,
+  ArrowDownRight
 } from 'lucide-react';
 import { 
   LineChart, 
@@ -61,7 +64,12 @@ import {
   Tooltip, 
   ResponsiveContainer, 
   AreaChart, 
-  Area 
+  Area,
+  BarChart,
+  Bar,
+  Cell,
+  PieChart,
+  Pie
 } from 'recharts';
 import { 
   Order, 
@@ -132,7 +140,7 @@ const ConfirmationDialog = ({ isOpen, title, message, onConfirm, onCancel, confi
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-blue-900/40 backdrop-blur-md animate-fade-in" onClick={onCancel}></div>
-      <div className="bg-white rounded-[2.5rem] w-full max-w-sm shadow-2xl relative overflow-hidden animate-zoom-in p-8 text-center">
+      <div className="bg-white rounded-[2.5rem] w-full max-sm shadow-2xl relative overflow-hidden animate-zoom-in p-8 text-center">
         <div className={`w-20 h-20 rounded-[1.5rem] flex items-center justify-center mx-auto mb-6 ${isDanger ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'}`}>
           <AlertCircle className="w-10 h-10" />
         </div>
@@ -375,7 +383,7 @@ export default function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
   const [showWelcome, setShowWelcome] = useState(false);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'add'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'add' | 'reports'>('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'Semua' | OrderStatus>('Semua');
   const [serviceFilter, setServiceFilter] = useState<ServiceType | 'Semua'>('Semua');
@@ -543,15 +551,33 @@ export default function App() {
 
   const stats = useMemo(() => {
     const now = new Date();
+    const todayStr = now.toDateString();
+    
+    // Omzet Hari Ini
+    const incomeToday = orders
+      .filter(o => new Date(o.createdAt).toDateString() === todayStr)
+      .reduce((sum, o) => sum + o.totalPrice, 0);
+
+    // Omzet Minggu Ini (7 hari terakhir)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(now.getDate() - 7);
+    const incomeWeekly = orders
+      .filter(o => new Date(o.createdAt) >= sevenDaysAgo)
+      .reduce((sum, o) => sum + o.totalPrice, 0);
+
+    // Omzet Bulan Ini
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
     const monthlyOrders = orders.filter(o => {
       const d = new Date(o.createdAt);
       return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
     });
-    const omzet = monthlyOrders.reduce((acc, curr) => acc + curr.totalPrice, 0);
+    const incomeMonthly = monthlyOrders.reduce((acc, curr) => acc + curr.totalPrice, 0);
+
     const completed = monthlyOrders.filter(o => o.status === 'Selesai').length;
     const process = monthlyOrders.filter(o => o.status === 'Proses').length;
+    
+    // Data Grafik 7 Hari
     const last7Days = [...Array(7)].map((_, i) => {
       const d = new Date();
       d.setDate(d.getDate() - (6 - i));
@@ -561,7 +587,23 @@ export default function App() {
         .reduce((sum, o) => sum + o.totalPrice, 0);
       return { name: dateStr, revenue: dayTotal };
     });
-    return { omzet, completed, process, chartData: last7Days };
+
+    // Breakdown Layanan
+    const serviceData = Object.keys(SERVICE_PRICES).map(s => {
+      const count = orders.filter(o => o.serviceType === s).length;
+      const total = orders.filter(o => o.serviceType === s).reduce((sum, o) => sum + o.totalPrice, 0);
+      return { name: s, count, total };
+    }).sort((a, b) => b.total - a.total);
+
+    return { 
+      incomeToday, 
+      incomeWeekly, 
+      incomeMonthly, 
+      completed, 
+      process, 
+      chartData: last7Days,
+      serviceData
+    };
   }, [orders]);
 
   const filteredOrders = useMemo(() => {
@@ -784,6 +826,7 @@ export default function App() {
                 <SidebarLink icon={LayoutDashboard} label="Dashboard" active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} />
                 <SidebarLink icon={ClipboardList} label="Data Pesanan" active={activeTab === 'orders'} onClick={() => setActiveTab('orders')} />
                 <SidebarLink icon={PlusCircle} label="Tambah Order" active={activeTab === 'add'} onClick={() => setActiveTab('add')} />
+                <SidebarLink icon={BarChart3} label="Laporan" active={activeTab === 'reports'} onClick={() => setActiveTab('reports')} />
               </>
             ) : (
               <>
@@ -816,7 +859,7 @@ export default function App() {
         <header className="sticky top-0 z-40 bg-white/70 backdrop-blur-2xl border-b border-slate-100 p-6 md:p-10 flex items-center justify-between">
           <div>
             <h2 className="text-2xl md:text-4xl font-black text-slate-900 tracking-tighter">
-              {role === 'ADMIN' ? 'Control Panel' : 'Dashboard Saya'}
+              {activeTab === 'dashboard' ? 'Overview' : activeTab === 'reports' ? 'Laporan Keuangan' : activeTab === 'add' ? 'Registrasi Baru' : 'Manajemen Pesanan'}
             </h2>
             {role === 'CUSTOMER' && <p className="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] mt-2 flex items-center gap-2"><ZapIcon className="w-3.5 h-3.5 pulse" /> Koneksi Real-time Aktif</p>}
           </div>
@@ -836,14 +879,19 @@ export default function App() {
           {activeTab === 'dashboard' && role === 'ADMIN' && (
             <div className="space-y-10 animate-fade-in">
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
-                <StatCard label="Omzet Bulan Ini" value={formatIDR(stats.omzet)} icon={TrendingUp} color="blue" />
+                <StatCard label="Omzet Bulan Ini" value={formatIDR(stats.incomeMonthly)} icon={TrendingUp} color="blue" />
                 <StatCard label="Selesai" value={stats.completed} icon={CheckCircle2} color="green" />
                 <StatCard label="Diproses" value={stats.process} icon={Clock} color="orange" />
                 <StatCard label="Total" value={orders.length} icon={Package} color="purple" />
               </div>
 
               <Card className="h-[450px]">
-                <h3 className="text-2xl font-black mb-8 tracking-tight">Tren Pendapatan</h3>
+                <div className="flex items-center justify-between mb-8">
+                   <h3 className="text-2xl font-black tracking-tight">Tren Pendapatan (7 Hari)</h3>
+                   <button onClick={() => setActiveTab('reports')} className="text-xs font-black text-blue-600 uppercase tracking-widest flex items-center gap-2 hover:underline">
+                      Detail Laporan <ArrowUpRight className="w-4 h-4" />
+                   </button>
+                </div>
                 <ResponsiveContainer width="100%" height="80%">
                   <AreaChart data={stats.chartData}>
                     <defs><linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#2563eb" stopOpacity={0.2}/><stop offset="95%" stopColor="#2563eb" stopOpacity={0}/></linearGradient></defs>
@@ -854,6 +902,88 @@ export default function App() {
                     <Area type="monotone" dataKey="revenue" stroke="#2563eb" strokeWidth={5} fillOpacity={1} fill="url(#colorRevenue)" />
                   </AreaChart>
                 </ResponsiveContainer>
+              </Card>
+            </div>
+          )}
+
+          {activeTab === 'reports' && role === 'ADMIN' && (
+            <div className="space-y-10 animate-fade-in">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-10">
+                <ReportMetric icon={Calendar} label="Harian (Hari Ini)" value={formatIDR(stats.incomeToday)} sub="Omzet Hari Ini" color="blue" />
+                <ReportMetric icon={History} label="Mingguan (7 Hari)" value={formatIDR(stats.incomeWeekly)} sub="Omzet Minggu Terakhir" color="orange" />
+                <ReportMetric icon={TrendingUp} label="Bulanan (Bulan Ini)" value={formatIDR(stats.incomeMonthly)} sub="Omzet Berjalan" color="green" />
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                <Card>
+                   <h3 className="text-2xl font-black mb-8 tracking-tight flex items-center gap-3">
+                      <BarChart3 className="w-6 h-6 text-blue-600" /> Analisis Layanan
+                   </h3>
+                   <div className="space-y-6">
+                      {stats.serviceData.map((s, idx) => (
+                        <div key={s.name} className="flex items-center justify-between group">
+                           <div className="flex items-center gap-4">
+                              <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs ${idx === 0 ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                                 {idx + 1}
+                              </div>
+                              <div>
+                                 <p className="font-bold text-slate-800 text-sm">{s.name}</p>
+                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{s.count} Pesanan</p>
+                              </div>
+                           </div>
+                           <p className="font-black text-slate-900">{formatIDR(s.total)}</p>
+                        </div>
+                      ))}
+                   </div>
+                </Card>
+
+                <Card className="flex flex-col">
+                   <h3 className="text-2xl font-black mb-8 tracking-tight flex items-center gap-3">
+                      <PieChartIcon className="w-6 h-6 text-orange-500" /> Komposisi Pendapatan
+                   </h3>
+                   <div className="flex-1 min-h-[300px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                         <BarChart data={stats.serviceData.slice(0, 5)} layout="vertical">
+                            <XAxis type="number" hide />
+                            <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 800, fill: '#64748b'}} width={100} />
+                            <Tooltip cursor={{fill: 'transparent'}} contentStyle={{borderRadius: '20px'}} />
+                            <Bar dataKey="total" radius={[0, 10, 10, 0]} barSize={20}>
+                               {stats.serviceData.map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={['#2563eb', '#f97316', '#10b981', '#8b5cf6', '#ec4899'][index % 5]} />
+                               ))}
+                            </Bar>
+                         </BarChart>
+                      </ResponsiveContainer>
+                   </div>
+                </Card>
+              </div>
+
+              <Card>
+                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
+                    <h3 className="text-2xl font-black tracking-tight flex items-center gap-3">
+                       <FilterX className="w-6 h-6 text-blue-600" /> Filter Kustom
+                    </h3>
+                    <div className="flex flex-wrap items-center gap-4">
+                       <input type="date" className="px-6 py-3 border rounded-2xl font-bold text-sm bg-slate-50 focus:bg-white outline-none" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                       <ArrowRight className="w-5 h-5 text-slate-300 hidden sm:block" />
+                       <input type="date" className="px-6 py-3 border rounded-2xl font-bold text-sm bg-slate-50 focus:bg-white outline-none" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+                       <Button onClick={() => { setStartDate(''); setEndDate(''); }} variant="outline" className="px-6">Reset</Button>
+                    </div>
+                 </div>
+                 
+                 <div className="bg-slate-900 rounded-[2.5rem] p-10 text-white flex flex-col md:flex-row items-center justify-between gap-8 group overflow-hidden relative">
+                    <div className="absolute right-0 bottom-0 opacity-5 transition-transform duration-1000 group-hover:scale-110">
+                       <Coins className="w-64 h-64" />
+                    </div>
+                    <div className="relative z-10 text-center md:text-left">
+                       <p className="text-[11px] font-black uppercase tracking-[0.3em] opacity-40 mb-3">Total Omzet Filter</p>
+                       <p className="text-6xl font-black tracking-tighter text-blue-400">{formatIDR(filteredOrders.reduce((sum, o) => sum + o.totalPrice, 0))}</p>
+                       <p className="text-sm font-bold text-slate-500 mt-2">{filteredOrders.length} Pesanan Ditemukan</p>
+                    </div>
+                    <Button onClick={() => window.print()} className="px-10 py-5 text-lg shadow-blue-500/20 relative z-10">
+                       UNDUH PDF LAPORAN <Download className="w-6 h-6" />
+                    </Button>
+                 </div>
               </Card>
             </div>
           )}
@@ -916,10 +1046,10 @@ export default function App() {
 
       {/* Navigasi Mobile (Bawah) */}
       <div className="md:hidden fixed bottom-8 left-6 right-6 h-20 bg-white/80 backdrop-blur-3xl rounded-[2.5rem] border border-white shadow-2xl z-50 flex items-center px-6 justify-around">
-        <MobileNavItem onClick={() => setActiveTab(role === 'ADMIN' ? 'dashboard' : 'orders')} active={activeTab === (role === 'ADMIN' ? 'dashboard' : 'orders')} icon={role === 'ADMIN' ? LayoutDashboard : Activity} label={role === 'ADMIN' ? 'Home' : 'Lacak'} />
-        {role === 'ADMIN' && <MobileNavItem onClick={() => setActiveTab('orders')} active={activeTab === 'orders'} icon={ClipboardList} label="Data" />}
+        <MobileNavItem onClick={() => setActiveTab(role === 'ADMIN' ? 'dashboard' : 'orders')} active={activeTab === 'dashboard'} icon={role === 'ADMIN' ? LayoutDashboard : Activity} label={role === 'ADMIN' ? 'Home' : 'Lacak'} />
+        {role === 'ADMIN' && <MobileNavItem onClick={() => setActiveTab('reports')} active={activeTab === 'reports'} icon={BarChart3} label="Laporan" />}
         <MobileNavItem onClick={() => setActiveTab('add')} active={activeTab === 'add'} icon={PlusCircle} label="Tambah" />
-        <MobileNavItem onClick={handleLogout} active={false} icon={LogOut} label="Keluar" danger />
+        <MobileNavItem onClick={() => setActiveTab('orders')} active={activeTab === 'orders'} icon={ClipboardList} label="Data" />
       </div>
     </div>
   );
@@ -947,6 +1077,25 @@ function CustomerMetric({ bg, icon: Icon, label, value, sub, color = "text-white
          <p className={`text-7xl font-black tracking-tighter ${color}`}>{value}</p>
          <span className={`text-sm font-black opacity-40 uppercase ${color}`}>{sub}</span>
       </div>
+    </div>
+  );
+}
+
+function ReportMetric({ icon: Icon, label, value, sub, color }: any) {
+  const colors: any = { blue: 'bg-blue-600 text-white', orange: 'bg-orange-500 text-white', green: 'bg-green-600 text-white' };
+  return (
+    <div className={`rounded-[2.5rem] p-10 flex flex-col justify-between h-full relative overflow-hidden group transition-all hover:-translate-y-2 ${colors[color]}`}>
+       <div className="absolute -right-6 -top-6 opacity-20 transition-transform duration-700 group-hover:rotate-12 group-hover:scale-125">
+          <Icon className="w-32 h-32" />
+       </div>
+       <div className="relative z-10">
+          <p className="text-[10px] font-black uppercase tracking-[0.25em] opacity-60 mb-2">{label}</p>
+          <p className="text-4xl font-black tracking-tighter mb-4">{value}</p>
+       </div>
+       <div className="flex items-center gap-2 relative z-10 opacity-80">
+          <TrendingUp className="w-4 h-4" />
+          <span className="text-xs font-black uppercase tracking-widest">{sub}</span>
+       </div>
     </div>
   );
 }
