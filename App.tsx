@@ -54,10 +54,7 @@ import {
   BarChart3,
   PieChart as PieChartIcon,
   ArrowDownRight,
-  Loader2,
-  Share2,
-  Copy,
-  Check
+  Loader2
 } from 'lucide-react';
 import { 
   LineChart, 
@@ -396,7 +393,6 @@ export default function App() {
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'info' | 'danger' } | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [dbStatus, setDbStatus] = useState<'offline' | 'syncing' | 'live'>('offline');
-  const [copying, setCopying] = useState(false);
 
   // Auth state for Admin
   const [showAdminLogin, setShowAdminLogin] = useState(false);
@@ -515,22 +511,6 @@ export default function App() {
     localStorage.removeItem('tini_customer_phone');
     setShowAdminLogin(false);
     setShowWelcome(true);
-  };
-
-  const handleCopyAppLink = () => {
-    const link = window.location.origin;
-    navigator.clipboard.writeText(link);
-    setCopying(true);
-    setToast({ message: "Link aplikasi berhasil disalin! 📋", type: 'success' });
-    setTimeout(() => {
-      setCopying(false);
-      setToast(null);
-    }, 3000);
-  };
-
-  const handleShareWhatsApp = () => {
-    const msg = `🧺 *LAUNDRY IBU TINI - Sistem Manajemen Cerdas*\n\nHalo Kak! Sekarang laundry di Ibu Tini lebih mudah dengan aplikasi digital. Lacak pesanan & buat order baru secara real-time!\n\nKlik di sini: ${window.location.origin}\n\nTerima kasih! 🙏`;
-    sendWhatsAppMessage("", msg);
   };
 
   const addOrder = async (newOrder: Order) => {
@@ -732,41 +712,13 @@ export default function App() {
                 Platform laundry digital paling simpel untuk Ibu Tini. Pantau status cucian kapan saja dan di mana saja secara real-time.
               </p>
 
-              <div className="flex flex-col sm:flex-row gap-4 pt-4">
+              <div className="pt-4">
                 <button 
                   onClick={() => setShowWelcome(false)}
-                  className="px-12 py-6 bg-blue-600 hover:bg-blue-700 text-white rounded-[2.5rem] font-black text-2xl transition-all shadow-2xl shadow-blue-200 hover:-translate-y-2 active:scale-95 flex items-center justify-center gap-4"
+                  className="w-full sm:w-auto px-12 py-6 bg-blue-600 hover:bg-blue-700 text-white rounded-[2.5rem] font-black text-2xl transition-all shadow-2xl shadow-blue-200 hover:-translate-y-2 active:scale-95 flex items-center justify-center gap-4"
                 >
                   Mulai Sekarang <ArrowRight className="w-8 h-8" />
                 </button>
-                
-                <button 
-                  onClick={handleCopyAppLink}
-                  className="px-10 py-6 bg-white border-2 border-blue-100 text-blue-600 rounded-[2.5rem] font-black text-xl transition-all hover:bg-blue-50 active:scale-95 flex items-center justify-center gap-4"
-                >
-                  {copying ? <Check className="w-6 h-6" /> : <Copy className="w-6 h-6" />} Sebar Link
-                </button>
-              </div>
-
-              {/* Share Card Section */}
-              <div className="bg-white/40 backdrop-blur-sm border border-blue-100/50 rounded-[2.5rem] p-8 max-w-xl animate-slide-up animation-delay-500">
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg">
-                    <Share2 className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h3 className="font-black text-slate-800 tracking-tight">Promosikan Bisnis</h3>
-                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Share ke pelanggan Anda</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 bg-white p-3 rounded-2xl border shadow-inner">
-                  <div className="flex-1 truncate font-mono text-sm text-slate-400 px-3">
-                    {window.location.origin}
-                  </div>
-                  <button onClick={handleShareWhatsApp} className="p-3 bg-green-500 text-white rounded-xl hover:bg-green-600 transition-colors shadow-md">
-                    <MessageCircle className="w-5 h-5" />
-                  </button>
-                </div>
               </div>
 
               <div className="grid grid-cols-3 gap-6 pt-10 border-t border-slate-100">
@@ -784,7 +736,6 @@ export default function App() {
                       <WashingMachine className="w-24 h-24 opacity-20 absolute top-10 right-10 animate-spin-slow" />
                       <Waves className="w-16 h-16 mb-6" />
                       <h3 className="text-3xl font-black">Laundry OS</h3>
-                      <p className="opacity-80 font-bold uppercase tracking-widest text-xs mt-2">Enterprise Ready</p>
                    </div>
                    <div className="absolute bottom-0 left-0 w-full h-1/2 p-12 space-y-6">
                       <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
@@ -981,7 +932,12 @@ export default function App() {
                 </div>
                 <ResponsiveContainer width="100%" height="80%">
                   <AreaChart data={stats.chartData}>
-                    <defs><linearGradient id="colorRevenue" x1="0" x2="0" y2="1"><stop offset="5%" stopColor="#2563eb" stopOpacity={0.2}/><stop offset="95%" stopColor="#2563eb" stopOpacity={0}/></linearGradient></defs>
+                    <defs>
+                      <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#2563eb" stopOpacity={0.2}/>
+                        <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
                     <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#f1f5f9" />
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 800, fill: '#94a3b8'}} />
                     <YAxis axisLine={false} tickLine={false} tickFormatter={(v) => `Rp${v/1000}k`} tick={{fontSize: 10, fontWeight: 800, fill: '#94a3b8'}} />

@@ -1,4 +1,27 @@
 
+/**
+ * SKEMA SQL UNTUK SUPABASE (Salin & Jalankan di SQL Editor Supabase):
+ * 
+ * CREATE TABLE orders (
+ *   id TEXT PRIMARY KEY,
+ *   "notaNumber" TEXT NOT NULL,
+ *   "customerName" TEXT NOT NULL,
+ *   "customerPhone" TEXT NOT NULL,
+ *   "customerAddress" TEXT NOT NULL,
+ *   weight FLOAT8 NOT NULL,
+ *   "serviceType" TEXT NOT NULL,
+ *   "totalPrice" NUMERIC NOT NULL,
+ *   status TEXT NOT NULL,
+ *   "createdAt" TIMESTAMPTZ DEFAULT now(),
+ *   "estimatedFinishDate" TIMESTAMPTZ,
+ *   "specialRequest" TEXT,
+ *   "deliveryMethod" TEXT NOT NULL
+ * );
+ * 
+ * -- Aktifkan fitur Realtime untuk tabel ini
+ * alter publication supabase_realtime add table orders;
+ */
+
 import { supabase } from './supabase';
 import { Order } from './types';
 
@@ -79,9 +102,12 @@ export const fetchOrdersFromSupabase = async (): Promise<Order[]> => {
 
 export const upsertOrderToSupabase = async (order: Order): Promise<boolean> => {
   try {
+    // Pastikan tidak ada field 'undefined' yang dikirim ke database
+    const cleanOrder = JSON.parse(JSON.stringify(order));
+    
     const { error } = await supabase
       .from('orders')
-      .upsert(order);
+      .upsert(cleanOrder);
     
     if (error) throw error;
     return true;
