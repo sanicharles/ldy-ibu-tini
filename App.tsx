@@ -53,7 +53,8 @@ import {
   Headphones,
   BarChart3,
   PieChart as PieChartIcon,
-  ArrowDownRight
+  ArrowDownRight,
+  Loader2
 } from 'lucide-react';
 import { 
   LineChart, 
@@ -95,7 +96,7 @@ const OWNER_PHONE = "085695014434"; // Nomor WhatsApp Ibu Tini
 
 // --- Shared Components ---
 
-const Button = ({ children, onClick, variant = 'primary', className = '', type = 'button', disabled = false }: any) => {
+const Button = ({ children, onClick, variant = 'primary', className = '', type = 'button', disabled = false, loading = false }: any) => {
   const variants = {
     primary: 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-200 hover:shadow-blue-300',
     secondary: 'bg-white text-blue-600 border-2 border-blue-600 hover:bg-blue-50',
@@ -106,11 +107,11 @@ const Button = ({ children, onClick, variant = 'primary', className = '', type =
   return (
     <button
       type={type}
-      disabled={disabled}
+      disabled={disabled || loading}
       onClick={onClick}
       className={`px-4 py-2 rounded-2xl font-bold transition-all duration-300 active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 ${variants[variant as keyof typeof variants]} ${className}`}
     >
-      {children}
+      {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : children}
     </button>
   );
 };
@@ -140,7 +141,7 @@ const ConfirmationDialog = ({ isOpen, title, message, onConfirm, onCancel, confi
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-blue-900/40 backdrop-blur-md animate-fade-in" onClick={onCancel}></div>
-      <div className="bg-white rounded-[2.5rem] w-full max-sm shadow-2xl relative overflow-hidden animate-zoom-in p-8 text-center">
+      <div className="bg-white rounded-[2.5rem] w-full max-w-sm shadow-2xl relative overflow-hidden animate-zoom-in p-8 text-center">
         <div className={`w-20 h-20 rounded-[1.5rem] flex items-center justify-center mx-auto mb-6 ${isDanger ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'}`}>
           <AlertCircle className="w-10 h-10" />
         </div>
@@ -402,13 +403,22 @@ export default function App() {
     setDbStatus('syncing');
     try {
       const remoteOrders = await fetchOrdersFromSupabase();
-      if (remoteOrders.length > 0) {
-        setOrders(remoteOrders);
-        localStorage.setItem('tini_orders', JSON.stringify(remoteOrders));
-      } else {
-        const saved = localStorage.getItem('tini_orders');
-        if (saved) setOrders(JSON.parse(saved));
-      }
+      
+      const saved = localStorage.getItem('tini_orders');
+      let localOrders: Order[] = saved ? JSON.parse(saved) : [];
+
+      // Gabungkan data: Prioritas data remote, tambahkan data lokal yang belum ada di remote (jika ada delay sinkronisasi)
+      const mergedOrders = [...remoteOrders];
+      localOrders.forEach(lo => {
+        if (!mergedOrders.some(ro => ro.id === lo.id)) {
+          mergedOrders.push(lo);
+        }
+      });
+
+      const finalOrders = mergedOrders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      
+      setOrders(finalOrders);
+      localStorage.setItem('tini_orders', JSON.stringify(finalOrders));
       setDbStatus('live');
 
       const channel = supabase
@@ -418,7 +428,10 @@ export default function App() {
           { event: '*', schema: 'public', table: 'orders' },
           (payload) => {
             if (payload.eventType === 'INSERT') {
-              setOrders(prev => [payload.new as Order, ...prev]);
+              setOrders(prev => {
+                if (prev.some(o => o.id === payload.new.id)) return prev;
+                return [payload.new as Order, ...prev];
+              });
               if (role === 'ADMIN') {
                 playNotificationSound();
                 setToast({ message: "Order Baru Masuk Real-time! 🧺", type: 'info' });
@@ -430,7 +443,7 @@ export default function App() {
               setOrders(prev => prev.filter(o => o.id !== payload.old.id));
               if (selectedOrder?.id === payload.old.id) {
                 setSelectedOrder(null);
-                setToast({ message: "Pesanan ini telah dihapus oleh Admin.", type: 'info' });
+                setToast({ message: "Pesanan ini telah dihapus.", type: 'info' });
                 setTimeout(() => setToast(null), 5000);
               }
             }
@@ -502,22 +515,54 @@ export default function App() {
   };
 
   const addOrder = async (newOrder: Order) => {
-    setOrders(prev => [newOrder, ...prev]);
+    // Optimistic Update: Simpan lokal dulu agar user merasa cepat
+    const updatedOrders = [newOrder, ...orders];
+    setOrders(updatedOrders);
+    localStorage.setItem('tini_orders', JSON.stringify(updatedOrders));
+    
     playNotificationSound();
-    setToast({ message: "Mengirim data ke server...", type: 'info' });
+    setToast({ message: "Pesanan disimpan secara lokal. Sinkronisasi database dimulai...", type: 'info' });
 
-    const success = await upsertOrderToSupabase(newOrder);
-    if (success) {
-      setToast({ message: `Pesanan ${newOrder.notaNumber} Berhasil Dibuat!`, type: 'success' });
+    // Step 2: Coba kirim ke database
+    try {
+      const success = await upsertOrderToSupabase(newOrder);
       
-      // Kirim konfirmasi ke WhatsApp Owner
-      const msg = `Halo Ibu Tini, saya mengonfirmasi pesanan laundry baru.\n\nNota: *${newOrder.notaNumber}*\nPelanggan: *${newOrder.customerName}*\nLayanan: *${newOrder.serviceType}*\nBerat/Qty: *${newOrder.weight}*\nTotal: *${formatIDR(newOrder.totalPrice)}*\nAlamat: ${newOrder.customerAddress}\n\nTerima kasih!`;
-      sendWhatsAppMessage(OWNER_PHONE, msg);
-      
-      setActiveTab('orders');
-    } else {
-      setToast({ message: "Gagal simpan online, pesanan tersimpan lokal.", type: 'info' });
+      if (success) {
+        setToast({ message: `Nota ${newOrder.notaNumber} BERHASIL DISIMPAN KE SERVER!`, type: 'success' });
+      } else {
+        setToast({ message: "Server sibuk. Pesanan tetap aman di perangkat Anda.", type: 'danger' });
+      }
+
+      // Step 3: Kirim konfirmasi WhatsApp (Rich Text Format)
+      const msg = `*PESANAN BARU - LAUNDRY IBU TINI*\n` +
+                 `------------------------------------\n` +
+                 `Nota: *${newOrder.notaNumber}*\n` +
+                 `Tanggal: ${new Date(newOrder.createdAt).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}\n\n` +
+                 `*PELANGGAN*\n` +
+                 `Nama: *${newOrder.customerName}*\n` +
+                 `WhatsApp: ${newOrder.customerPhone}\n` +
+                 `Alamat: ${newOrder.customerAddress}\n\n` +
+                 `*LAYANAN*\n` +
+                 `Layanan: *${newOrder.serviceType}*\n` +
+                 `Berat/Qty: ${newOrder.weight} Unit/Kg\n` +
+                 `Pengiriman: ${newOrder.deliveryMethod}\n` +
+                 (newOrder.specialRequest ? `Catatan: _${newOrder.specialRequest}_\n` : '') +
+                 `------------------------------------\n` +
+                 `*TOTAL: ${formatIDR(newOrder.totalPrice)}*\n\n` +
+                 `Lacak Pesanan: ${window.location.origin}\n\n` +
+                 `_Mohon segera diproses ya Bu Tini. Terima kasih!_`;
+                 
+      // Berikan jeda sebentar sebelum buka WhatsApp agar UI reset lancar
+      setTimeout(() => {
+        sendWhatsAppMessage("085695014434", msg);
+        setActiveTab('orders');
+      }, 300);
+
+    } catch (err) {
+      console.error("Database Sync Error:", err);
+      // Data tetap ada di state lokal & localStorage, jadi user tidak kehilangan datanya
     }
+    
     setTimeout(() => setToast(null), 5000);
   };
 
@@ -526,12 +571,17 @@ export default function App() {
     if (!order) return;
     
     const updatedOrder = { ...order, status: newStatus };
-    setOrders(prev => prev.map(o => o.id === id ? updatedOrder : o));
+    const updatedOrders = orders.map(o => o.id === id ? updatedOrder : o);
+    setOrders(updatedOrders);
+    localStorage.setItem('tini_orders', JSON.stringify(updatedOrders));
+    
     if (selectedOrder?.id === id) setSelectedOrder(updatedOrder);
 
     const success = await upsertOrderToSupabase(updatedOrder);
     if (success) {
         setToast({ message: `Status diperbarui: ${newStatus}`, type: 'success' });
+    } else {
+        setToast({ message: `Gagal sinkron status ke server, data tersimpan di perangkat.`, type: 'info' });
     }
     setTimeout(() => setToast(null), 4000);
   };
@@ -540,11 +590,13 @@ export default function App() {
     const order = orders.find(o => o.id === id);
     if (!order) return;
 
-    setOrders(prev => prev.filter(o => o.id !== id));
+    const updatedOrders = orders.filter(o => o.id !== id);
+    setOrders(updatedOrders);
+    localStorage.setItem('tini_orders', JSON.stringify(updatedOrders));
     
     const success = await deleteOrderFromSupabase(id);
     if (success) {
-      setToast({ message: `Pesanan ${order.notaNumber} dihapus.`, type: 'danger' });
+      setToast({ message: `Pesanan ${order.notaNumber} dihapus selamanya.`, type: 'danger' });
     }
     setTimeout(() => setToast(null), 5000);
   };
@@ -1207,14 +1259,21 @@ function OrderForm({ role, prefilledPhone, onAdd }: any) {
     weight: 0,
     serviceType: 'Cuci Setrika' as ServiceType,
     specialRequest: '',
-    deliveryMethod: 'Ambil Sendiri' as any
+    deliveryMethod: 'Ambil Sendiri' as 'Antar/Jemput' | 'Ambil Sendiri'
   });
+  
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const total = formData.weight * (SERVICE_PRICES[formData.serviceType] || 0);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (formData.weight <= 0) return;
+    if (formData.weight <= 0) {
+      alert("Berat/Unit tidak boleh kosong!");
+      return;
+    }
+    
+    setIsSubmitting(true);
     
     const newOrder: Order = {
       id: Date.now().toString(),
@@ -1225,8 +1284,26 @@ function OrderForm({ role, prefilledPhone, onAdd }: any) {
       createdAt: new Date().toISOString(),
       estimatedFinishDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
     };
-    onAdd(newOrder);
-    setFormData({ customerName: '', customerPhone: prefilledPhone || '', customerAddress: '', weight: 0, serviceType: 'Cuci Setrika', specialRequest: '', deliveryMethod: 'Ambil Sendiri' });
+    
+    try {
+      // Panggil addOrder (ini sudah menangani penyimpanan lokal & remote)
+      await onAdd(newOrder);
+      
+      // Reset form secara instan setelah pemanggilan
+      setFormData({ 
+        customerName: '', 
+        customerPhone: prefilledPhone || '', 
+        customerAddress: '', 
+        weight: 0, 
+        serviceType: 'Cuci Setrika', 
+        specialRequest: '', 
+        deliveryMethod: 'Ambil Sendiri' 
+      });
+    } catch (err) {
+      console.error("Order Submission Processed with Background Sync", err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -1265,6 +1342,23 @@ function OrderForm({ role, prefilledPhone, onAdd }: any) {
               </div>
             </div>
             <div className="space-y-3">
+              <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Metode Pengiriman</label>
+              <div className="relative">
+                <select className="w-full px-8 py-6 border border-slate-100 bg-slate-50/50 rounded-[2rem] outline-none focus:bg-white focus:ring-4 focus:ring-blue-100 transition-all font-black text-blue-600 appearance-none cursor-pointer" value={formData.deliveryMethod} onChange={(e) => setFormData({...formData, deliveryMethod: e.target.value as any})}>
+                  <option value="Ambil Sendiri">Ambil Sendiri</option>
+                  <option value="Antar/Jemput">Antar/Jemput</option>
+                </select>
+                <div className="absolute right-8 top-1/2 -translate-y-1/2 pointer-events-none text-blue-400"><ChevronRight className="w-6 h-6 rotate-90" /></div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+            <div className="space-y-3">
+              <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Catatan Khusus (Opsional)</label>
+              <input className="w-full px-8 py-6 border border-slate-100 bg-slate-50/50 rounded-[2rem] outline-none focus:bg-white focus:ring-4 focus:ring-blue-100 transition-all font-bold text-slate-700 text-lg" value={formData.specialRequest} onChange={(e) => setFormData({...formData, specialRequest: e.target.value})} placeholder="Contoh: Jangan pakai pewangi" />
+            </div>
+            <div className="space-y-3">
               <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Jumlah Berat (Kg) / Unit</label>
               <div className="relative">
                  <input required type="number" min="0.1" step="0.1" className="w-full px-8 py-6 border border-slate-100 bg-slate-50/50 rounded-[2rem] outline-none font-black text-4xl focus:bg-white focus:ring-4 focus:ring-blue-100 transition-all text-slate-800" value={formData.weight || ''} onChange={(e) => setFormData({...formData, weight: parseFloat(e.target.value) || 0})} placeholder="0.0" />
@@ -1279,13 +1373,14 @@ function OrderForm({ role, prefilledPhone, onAdd }: any) {
                <p className="text-[11px] font-black uppercase tracking-[0.3em] opacity-40 mb-3">Estimasi Tagihan Akhir</p>
                <p className="text-7xl font-black tracking-tighter text-blue-400">{formatIDR(total)}</p>
             </div>
-            <button 
+            <Button 
               type="submit" 
+              loading={isSubmitting}
               disabled={total <= 0} 
               className="w-full lg:w-auto px-16 py-7 bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-2xl font-black rounded-[2.5rem] shadow-2xl shadow-blue-500/20 transition-all hover:-translate-y-2 active:scale-95 flex items-center justify-center gap-4 relative z-10"
             >
               KONFIRMASI ORDER <ArrowRight className="w-8 h-8" />
-            </button>
+            </Button>
           </div>
         </form>
       </Card>
