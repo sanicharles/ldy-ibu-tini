@@ -54,7 +54,10 @@ import {
   BarChart3,
   PieChart as PieChartIcon,
   ArrowDownRight,
-  Loader2
+  Loader2,
+  Share2,
+  Copy,
+  Check
 } from 'lucide-react';
 import { 
   LineChart, 
@@ -393,6 +396,7 @@ export default function App() {
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'info' | 'danger' } | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [dbStatus, setDbStatus] = useState<'offline' | 'syncing' | 'live'>('offline');
+  const [copying, setCopying] = useState(false);
 
   // Auth state for Admin
   const [showAdminLogin, setShowAdminLogin] = useState(false);
@@ -407,7 +411,6 @@ export default function App() {
       const saved = localStorage.getItem('tini_orders');
       let localOrders: Order[] = saved ? JSON.parse(saved) : [];
 
-      // Gabungkan data: Prioritas data remote, tambahkan data lokal yang belum ada di remote (jika ada delay sinkronisasi)
       const mergedOrders = [...remoteOrders];
       localOrders.forEach(lo => {
         if (!mergedOrders.some(ro => ro.id === lo.id)) {
@@ -514,8 +517,23 @@ export default function App() {
     setShowWelcome(true);
   };
 
+  const handleCopyAppLink = () => {
+    const link = window.location.origin;
+    navigator.clipboard.writeText(link);
+    setCopying(true);
+    setToast({ message: "Link aplikasi berhasil disalin! 📋", type: 'success' });
+    setTimeout(() => {
+      setCopying(false);
+      setToast(null);
+    }, 3000);
+  };
+
+  const handleShareWhatsApp = () => {
+    const msg = `🧺 *LAUNDRY IBU TINI - Sistem Manajemen Cerdas*\n\nHalo Kak! Sekarang laundry di Ibu Tini lebih mudah dengan aplikasi digital. Lacak pesanan & buat order baru secara real-time!\n\nKlik di sini: ${window.location.origin}\n\nTerima kasih! 🙏`;
+    sendWhatsAppMessage("", msg);
+  };
+
   const addOrder = async (newOrder: Order) => {
-    // Optimistic Update: Simpan lokal dulu agar user merasa cepat
     const updatedOrders = [newOrder, ...orders];
     setOrders(updatedOrders);
     localStorage.setItem('tini_orders', JSON.stringify(updatedOrders));
@@ -523,7 +541,6 @@ export default function App() {
     playNotificationSound();
     setToast({ message: "Pesanan disimpan secara lokal. Sinkronisasi database dimulai...", type: 'info' });
 
-    // Step 2: Coba kirim ke database
     try {
       const success = await upsertOrderToSupabase(newOrder);
       
@@ -533,7 +550,6 @@ export default function App() {
         setToast({ message: "Server sibuk. Pesanan tetap aman di perangkat Anda.", type: 'danger' });
       }
 
-      // Step 3: Kirim konfirmasi WhatsApp (Rich Text Format)
       const msg = `*PESANAN BARU - LAUNDRY IBU TINI*\n` +
                  `------------------------------------\n` +
                  `Nota: *${newOrder.notaNumber}*\n` +
@@ -552,7 +568,6 @@ export default function App() {
                  `Lacak Pesanan: ${window.location.origin}\n\n` +
                  `_Mohon segera diproses ya Bu Tini. Terima kasih!_`;
                  
-      // Berikan jeda sebentar sebelum buka WhatsApp agar UI reset lancar
       setTimeout(() => {
         sendWhatsAppMessage("085695014434", msg);
         setActiveTab('orders');
@@ -560,7 +575,6 @@ export default function App() {
 
     } catch (err) {
       console.error("Database Sync Error:", err);
-      // Data tetap ada di state lokal & localStorage, jadi user tidak kehilangan datanya
     }
     
     setTimeout(() => setToast(null), 5000);
@@ -580,8 +594,6 @@ export default function App() {
     const success = await upsertOrderToSupabase(updatedOrder);
     if (success) {
         setToast({ message: `Status diperbarui: ${newStatus}`, type: 'success' });
-    } else {
-        setToast({ message: `Gagal sinkron status ke server, data tersimpan di perangkat.`, type: 'info' });
     }
     setTimeout(() => setToast(null), 4000);
   };
@@ -605,19 +617,16 @@ export default function App() {
     const now = new Date();
     const todayStr = now.toDateString();
     
-    // Omzet Hari Ini
     const incomeToday = orders
       .filter(o => new Date(o.createdAt).toDateString() === todayStr)
       .reduce((sum, o) => sum + o.totalPrice, 0);
 
-    // Omzet Minggu Ini (7 hari terakhir)
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(now.getDate() - 7);
     const incomeWeekly = orders
       .filter(o => new Date(o.createdAt) >= sevenDaysAgo)
       .reduce((sum, o) => sum + o.totalPrice, 0);
 
-    // Omzet Bulan Ini
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
     const monthlyOrders = orders.filter(o => {
@@ -629,7 +638,6 @@ export default function App() {
     const completed = monthlyOrders.filter(o => o.status === 'Selesai').length;
     const process = monthlyOrders.filter(o => o.status === 'Proses').length;
     
-    // Data Grafik 7 Hari
     const last7Days = [...Array(7)].map((_, i) => {
       const d = new Date();
       d.setDate(d.getDate() - (6 - i));
@@ -640,7 +648,6 @@ export default function App() {
       return { name: dateStr, revenue: dayTotal };
     });
 
-    // Breakdown Layanan
     const serviceData = Object.keys(SERVICE_PRICES).map(s => {
       const count = orders.filter(o => o.serviceType === s).length;
       const total = orders.filter(o => o.serviceType === s).reduce((sum, o) => sum + o.totalPrice, 0);
@@ -725,13 +732,41 @@ export default function App() {
                 Platform laundry digital paling simpel untuk Ibu Tini. Pantau status cucian kapan saja dan di mana saja secara real-time.
               </p>
 
-              <div className="pt-4">
+              <div className="flex flex-col sm:flex-row gap-4 pt-4">
                 <button 
                   onClick={() => setShowWelcome(false)}
-                  className="w-full sm:w-auto px-12 py-6 bg-blue-600 hover:bg-blue-700 text-white rounded-[2.5rem] font-black text-2xl transition-all shadow-2xl shadow-blue-200 hover:-translate-y-2 active:scale-95 flex items-center justify-center gap-4"
+                  className="px-12 py-6 bg-blue-600 hover:bg-blue-700 text-white rounded-[2.5rem] font-black text-2xl transition-all shadow-2xl shadow-blue-200 hover:-translate-y-2 active:scale-95 flex items-center justify-center gap-4"
                 >
                   Mulai Sekarang <ArrowRight className="w-8 h-8" />
                 </button>
+                
+                <button 
+                  onClick={handleCopyAppLink}
+                  className="px-10 py-6 bg-white border-2 border-blue-100 text-blue-600 rounded-[2.5rem] font-black text-xl transition-all hover:bg-blue-50 active:scale-95 flex items-center justify-center gap-4"
+                >
+                  {copying ? <Check className="w-6 h-6" /> : <Copy className="w-6 h-6" />} Sebar Link
+                </button>
+              </div>
+
+              {/* Share Card Section */}
+              <div className="bg-white/40 backdrop-blur-sm border border-blue-100/50 rounded-[2.5rem] p-8 max-w-xl animate-slide-up animation-delay-500">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg">
+                    <Share2 className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-slate-800 tracking-tight">Promosikan Bisnis</h3>
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Share ke pelanggan Anda</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 bg-white p-3 rounded-2xl border shadow-inner">
+                  <div className="flex-1 truncate font-mono text-sm text-slate-400 px-3">
+                    {window.location.origin}
+                  </div>
+                  <button onClick={handleShareWhatsApp} className="p-3 bg-green-500 text-white rounded-xl hover:bg-green-600 transition-colors shadow-md">
+                    <MessageCircle className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
 
               <div className="grid grid-cols-3 gap-6 pt-10 border-t border-slate-100">
@@ -946,7 +981,7 @@ export default function App() {
                 </div>
                 <ResponsiveContainer width="100%" height="80%">
                   <AreaChart data={stats.chartData}>
-                    <defs><linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#2563eb" stopOpacity={0.2}/><stop offset="95%" stopColor="#2563eb" stopOpacity={0}/></linearGradient></defs>
+                    <defs><linearGradient id="colorRevenue" x1="0" x2="0" y2="1"><stop offset="5%" stopColor="#2563eb" stopOpacity={0.2}/><stop offset="95%" stopColor="#2563eb" stopOpacity={0}/></linearGradient></defs>
                     <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#f1f5f9" />
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 800, fill: '#94a3b8'}} />
                     <YAxis axisLine={false} tickLine={false} tickFormatter={(v) => `Rp${v/1000}k`} tick={{fontSize: 10, fontWeight: 800, fill: '#94a3b8'}} />
@@ -1286,10 +1321,8 @@ function OrderForm({ role, prefilledPhone, onAdd }: any) {
     };
     
     try {
-      // Panggil addOrder (ini sudah menangani penyimpanan lokal & remote)
       await onAdd(newOrder);
       
-      // Reset form secara instan setelah pemanggilan
       setFormData({ 
         customerName: '', 
         customerPhone: prefilledPhone || '', 
