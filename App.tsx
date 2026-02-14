@@ -92,6 +92,7 @@ import {
 import { supabase } from './supabase';
 
 const ADMIN_PIN = "2115";
+const ADMIN_USERNAME = "Eneng_21";
 const OWNER_PHONE = "085695014434"; // Nomor WhatsApp Ibu Tini
 
 // --- Shared Components ---
@@ -396,8 +397,9 @@ export default function App() {
 
   // Auth state for Admin
   const [showAdminLogin, setShowAdminLogin] = useState(false);
+  const [adminUsernameInput, setAdminUsernameInput] = useState('');
   const [adminPinInput, setAdminPinInput] = useState('');
-  const [adminPinError, setAdminPinError] = useState(false);
+  const [adminAuthError, setAdminAuthError] = useState(false);
 
   const initializeSupabase = useCallback(async () => {
     setDbStatus('syncing');
@@ -481,15 +483,16 @@ export default function App() {
 
   const handleAdminLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (adminPinInput === ADMIN_PIN) {
+    if (adminPinInput === ADMIN_PIN && adminUsernameInput === ADMIN_USERNAME) {
       setRole('ADMIN');
       localStorage.setItem('tini_role', 'ADMIN');
       setActiveTab('dashboard');
       setShowAdminLogin(false);
+      setAdminUsernameInput('');
       setAdminPinInput('');
-      setAdminPinError(false);
+      setAdminAuthError(false);
     } else {
-      setAdminPinError(true);
+      setAdminAuthError(true);
       setAdminPinInput('');
     }
   };
@@ -565,7 +568,7 @@ export default function App() {
     if (!order) return;
     
     const updatedOrder = { ...order, status: newStatus };
-    const updatedOrders = orders.map(o => o.id === id ? updatedOrder : o);
+    const updatedOrders = orders.map(o => id === id ? updatedOrder : o);
     setOrders(updatedOrders);
     localStorage.setItem('tini_orders', JSON.stringify(updatedOrders));
     
@@ -780,10 +783,21 @@ export default function App() {
           <button onClick={() => setShowAdminLogin(false)} className="mb-8 text-sm text-blue-600 font-bold flex items-center gap-2 hover:underline"><X className="w-4 h-4" /> Kembali</button>
           <div className="w-24 h-24 bg-blue-50 rounded-[2rem] flex items-center justify-center mx-auto mb-8 text-blue-600 shadow-inner"><Lock className="w-10 h-10" /></div>
           <h2 className="text-3xl font-black text-slate-900 mb-2">Portal Admin</h2>
-          <p className="text-slate-400 font-semibold mb-10">Masukkan PIN 4 digit untuk akses kontrol.</p>
-          <form onSubmit={handleAdminLogin} className="space-y-8">
-            <input required autoFocus type="password" maxLength={4} className={`w-full px-4 py-6 border rounded-[2rem] text-center text-5xl tracking-[1.5rem] font-black outline-none focus:ring-4 focus:ring-blue-100 transition-all ${adminPinError ? 'border-red-500 bg-red-50 text-red-600' : 'border-slate-100 bg-slate-50'}`} placeholder="••••" value={adminPinInput} onChange={(e) => { setAdminPinInput(e.target.value.replace(/\D/g, '')); setAdminPinError(false); }} />
-            <Button type="submit" className="w-full py-6 text-xl shadow-blue-100">Buka Akses <Unlock className="w-6 h-6" /></Button>
+          <p className="text-slate-400 font-semibold mb-10">Masukkan identitas admin untuk akses kontrol.</p>
+          <form onSubmit={handleAdminLogin} className="space-y-6">
+            <div className="space-y-2 text-left">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Username Admin</label>
+              <div className="relative group">
+                <UserCircle className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5 group-focus-within:text-blue-500 transition-colors" />
+                <input required autoFocus type="text" className={`w-full pl-12 pr-4 py-4 border rounded-2xl outline-none focus:ring-4 focus:ring-blue-100 transition-all font-bold text-slate-800 ${adminAuthError ? 'border-red-500 bg-red-50' : 'border-slate-100 bg-slate-50'}`} placeholder="Username" value={adminUsernameInput} onChange={(e) => { setAdminUsernameInput(e.target.value); setAdminAuthError(false); }} />
+              </div>
+            </div>
+            <div className="space-y-2 text-left">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Security PIN</label>
+              <input required type="password" maxLength={4} className={`w-full px-4 py-5 border rounded-2xl text-center text-4xl tracking-[1rem] font-black outline-none focus:ring-4 focus:ring-blue-100 transition-all ${adminAuthError ? 'border-red-500 bg-red-50 text-red-600' : 'border-slate-100 bg-slate-50'}`} placeholder="••••" value={adminPinInput} onChange={(e) => { setAdminPinInput(e.target.value.replace(/\D/g, '')); setAdminAuthError(false); }} />
+            </div>
+            {adminAuthError && <p className="text-red-500 text-xs font-bold animate-pulse">Username atau PIN salah!</p>}
+            <Button type="submit" className="w-full py-6 text-xl shadow-blue-100 mt-4">Buka Akses <Unlock className="w-6 h-6" /></Button>
           </form>
         </Card>
       </div>
