@@ -2,6 +2,7 @@
 /**
  * SKEMA SQL UNTUK SUPABASE (Salin & Jalankan di SQL Editor Supabase):
  * 
+ * -- Tabel Pesanan
  * CREATE TABLE orders (
  *   id TEXT PRIMARY KEY,
  *   "notaNumber" TEXT NOT NULL,
@@ -18,8 +19,17 @@
  *   "deliveryMethod" TEXT NOT NULL
  * );
  * 
+ * -- Tabel Profil Pelanggan
+ * CREATE TABLE customers (
+ *   phone TEXT PRIMARY KEY,
+ *   name TEXT NOT NULL,
+ *   address TEXT NOT NULL,
+ *   "lastSeen" TIMESTAMPTZ DEFAULT now()
+ * );
+ * 
  * -- Aktifkan fitur Realtime untuk tabel ini
  * alter publication supabase_realtime add table orders;
+ * alter publication supabase_realtime add table customers;
  */
 
 import { supabase } from './supabase';
@@ -102,9 +112,7 @@ export const fetchOrdersFromSupabase = async (): Promise<Order[]> => {
 
 export const upsertOrderToSupabase = async (order: Order): Promise<boolean> => {
   try {
-    // Pastikan tidak ada field 'undefined' yang dikirim ke database
     const cleanOrder = JSON.parse(JSON.stringify(order));
-    
     const { error } = await supabase
       .from('orders')
       .upsert(cleanOrder);
@@ -112,7 +120,7 @@ export const upsertOrderToSupabase = async (order: Order): Promise<boolean> => {
     if (error) throw error;
     return true;
   } catch (err) {
-    console.error("Supabase upsert error:", err);
+    console.error("Supabase upsert order error:", err);
     return false;
   }
 };
@@ -128,6 +136,39 @@ export const deleteOrderFromSupabase = async (id: string): Promise<boolean> => {
     return true;
   } catch (err) {
     console.error("Supabase delete error:", err);
+    return false;
+  }
+};
+
+export const fetchCustomerFromSupabase = async (phone: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('customers')
+      .select('*')
+      .eq('phone', phone)
+      .single();
+    if (error && error.code !== 'PGRST116') throw error; // PGRST116 is code for no rows found
+    return data;
+  } catch (err) {
+    console.error("Supabase fetch customer error:", err);
+    return null;
+  }
+};
+
+export const upsertCustomerToSupabase = async (phone: string, name: string, address: string) => {
+  try {
+    const { error } = await supabase
+      .from('customers')
+      .upsert({ 
+        phone, 
+        name, 
+        address, 
+        lastSeen: new Date().toISOString() 
+      });
+    if (error) throw error;
+    return true;
+  } catch (err) {
+    console.error("Supabase upsert customer error:", err);
     return false;
   }
 };

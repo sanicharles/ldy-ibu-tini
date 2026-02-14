@@ -87,7 +87,9 @@ import {
   showPushNotification,
   fetchOrdersFromSupabase,
   upsertOrderToSupabase,
-  deleteOrderFromSupabase
+  deleteOrderFromSupabase,
+  fetchCustomerFromSupabase,
+  upsertCustomerToSupabase
 } from './utils';
 import { supabase } from './supabase';
 
@@ -381,6 +383,7 @@ function DetailBox({ icon: Icon, label, value }: any) {
 export default function App() {
   const [role, setRole] = useState<Role | null>(null);
   const [customerPhone, setCustomerPhone] = useState<string>('');
+  const [customerProfile, setCustomerProfile] = useState<{name: string, address: string} | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
@@ -400,6 +403,13 @@ export default function App() {
   const [adminUsernameInput, setAdminUsernameInput] = useState('');
   const [adminPinInput, setAdminPinInput] = useState('');
   const [adminAuthError, setAdminAuthError] = useState(false);
+
+  const syncCustomerProfile = useCallback(async (phone: string) => {
+    const profile = await fetchCustomerFromSupabase(phone);
+    if (profile) {
+      setCustomerProfile({ name: profile.name, address: profile.address });
+    }
+  }, []);
 
   const initializeSupabase = useCallback(async () => {
     setDbStatus('syncing');
@@ -421,6 +431,10 @@ export default function App() {
       setOrders(finalOrders);
       localStorage.setItem('tini_orders', JSON.stringify(finalOrders));
       setDbStatus('live');
+
+      if (customerPhone) {
+        syncCustomerProfile(customerPhone);
+      }
 
       const channel = supabase
         .channel('schema-db-changes')
@@ -461,13 +475,15 @@ export default function App() {
       const saved = localStorage.getItem('tini_orders');
       if (saved) setOrders(JSON.parse(saved));
     }
-  }, [role, selectedOrder]);
+  }, [role, selectedOrder, customerPhone, syncCustomerProfile]);
 
   useEffect(() => {
     initializeSupabase();
     
     const savedPhone = localStorage.getItem('tini_customer_phone');
-    if (savedPhone) setCustomerPhone(savedPhone);
+    if (savedPhone) {
+        setCustomerPhone(savedPhone);
+    }
 
     const savedRole = localStorage.getItem('tini_role');
     if (savedRole) {
@@ -510,6 +526,7 @@ export default function App() {
   const handleLogout = () => {
     setRole(null);
     setCustomerPhone('');
+    setCustomerProfile(null);
     localStorage.removeItem('tini_role');
     localStorage.removeItem('tini_customer_phone');
     setShowAdminLogin(false);
@@ -522,12 +539,19 @@ export default function App() {
     localStorage.setItem('tini_orders', JSON.stringify(updatedOrders));
     
     playNotificationSound();
-    setToast({ message: "Pesanan disimpan secara lokal. Sinkronisasi database dimulai...", type: 'info' });
+    setToast({ message: "Pesanan disimpan. Sinkronisasi data dimulai...", type: 'info' });
 
     try {
-      const success = await upsertOrderToSupabase(newOrder);
+      // 1. Simpan Pesanan
+      const orderSuccess = await upsertOrderToSupabase(newOrder);
       
-      if (success) {
+      // 2. Simpan/Update Profil Pelanggan Otomatis
+      await upsertCustomerToSupabase(newOrder.customerPhone, newOrder.customerName, newOrder.customerAddress);
+      
+      // Update state profil lokal
+      setCustomerProfile({ name: newOrder.customerName, address: newOrder.customerAddress });
+
+      if (orderSuccess) {
         setToast({ message: `Nota ${newOrder.notaNumber} BERHASIL DISIMPAN KE SERVER!`, type: 'success' });
       } else {
         setToast({ message: "Server sibuk. Pesanan tetap aman di perangkat Anda.", type: 'danger' });
@@ -568,7 +592,7 @@ export default function App() {
     if (!order) return;
     
     const updatedOrder = { ...order, status: newStatus };
-    const updatedOrders = orders.map(o => id === id ? updatedOrder : o);
+    const updatedOrders = orders.map(o => o.id === id ? updatedOrder : o);
     setOrders(updatedOrders);
     localStorage.setItem('tini_orders', JSON.stringify(updatedOrders));
     
@@ -842,7 +866,13 @@ export default function App() {
           <div className="w-20 h-20 bg-blue-50 rounded-[2rem] flex items-center justify-center text-blue-600 mb-8 mx-auto shadow-inner"><SearchCheck className="w-10 h-10" /></div>
           <h2 className="text-3xl font-black text-center mb-2 text-slate-900">Order Tracking</h2>
           <p className="text-center text-slate-400 font-semibold text-sm mb-10 px-4">Lacak pesanan Anda menggunakan nomor WhatsApp yang terdaftar.</p>
-          <form onSubmit={(e) => { e.preventDefault(); const p = (e.target as any).phone.value; setCustomerPhone(p); localStorage.setItem('tini_customer_phone', p); initializeSupabase(); }}>
+          <form onSubmit={(e) => { 
+            e.preventDefault(); 
+            const p = (e.target as any).phone.value; 
+            setCustomerPhone(p); 
+            localStorage.setItem('tini_customer_phone', p); 
+            initializeSupabase(); 
+          }}>
             <div className="space-y-8">
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Nomor HP WhatsApp</label>
@@ -1045,7 +1075,14 @@ export default function App() {
             </div>
           )}
 
-          {activeTab === 'add' && <OrderForm role={role} onAdd={addOrder} prefilledPhone={customerPhone} />}
+          {activeTab === 'add' && (
+            <OrderForm 
+              role={role} 
+              onAdd={addOrder} 
+              prefilledPhone={customerPhone} 
+              prefilledProfile={customerProfile} 
+            />
+          )}
 
           {activeTab === 'orders' && (
             <div className="space-y-10 animate-fade-in">
@@ -1256,7 +1293,7 @@ function StatCard({ label, value, icon: Icon, color }: any) {
   );
 }
 
-function OrderForm({ role, prefilledPhone, onAdd }: any) {
+function OrderForm({ role, prefilledPhone, prefilledProfile, onAdd }: any) {
   const [formData, setFormData] = useState({
     customerName: '',
     customerPhone: prefilledPhone || '',
@@ -1268,6 +1305,17 @@ function OrderForm({ role, prefilledPhone, onAdd }: any) {
   });
   
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Efek untuk mengisi data dari profil yang ditemukan di database
+  useEffect(() => {
+    if (prefilledProfile) {
+      setFormData(prev => ({
+        ...prev,
+        customerName: prefilledProfile.name,
+        customerAddress: prefilledProfile.address
+      }));
+    }
+  }, [prefilledProfile]);
 
   const total = formData.weight * (SERVICE_PRICES[formData.serviceType] || 0);
 
@@ -1303,7 +1351,7 @@ function OrderForm({ role, prefilledPhone, onAdd }: any) {
         deliveryMethod: 'Ambil Sendiri' 
       });
     } catch (err) {
-      console.error("Order Submission Processed with Background Sync", err);
+      console.error("Order Submission Error", err);
     } finally {
       setIsSubmitting(false);
     }
