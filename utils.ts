@@ -3,7 +3,7 @@
  * SKEMA SQL UNTUK SUPABASE (Salin & Jalankan di SQL Editor Supabase):
  * 
  * -- Tabel Pesanan
- * CREATE TABLE orders (
+ * CREATE TABLE IF NOT EXISTS orders (
  *   id TEXT PRIMARY KEY,
  *   "notaNumber" TEXT NOT NULL,
  *   "customerName" TEXT NOT NULL,
@@ -20,7 +20,7 @@
  * );
  * 
  * -- Tabel Profil Pelanggan
- * CREATE TABLE customers (
+ * CREATE TABLE IF NOT EXISTS customers (
  *   phone TEXT PRIMARY KEY,
  *   name TEXT NOT NULL,
  *   address TEXT NOT NULL,
@@ -105,14 +105,18 @@ export const fetchOrdersFromSupabase = async (): Promise<Order[]> => {
     if (error) throw error;
     return data || [];
   } catch (err) {
-    console.error("Supabase fetch error:", err);
+    console.error("Supabase fetch orders error:", err);
     return [];
   }
 };
 
 export const upsertOrderToSupabase = async (order: Order): Promise<boolean> => {
   try {
-    const cleanOrder = JSON.parse(JSON.stringify(order));
+    // Pastikan data bersih dari 'undefined' untuk Postgres
+    const cleanOrder = JSON.parse(JSON.stringify(order, (key, value) => 
+      value === undefined ? null : value
+    ));
+    
     const { error } = await supabase
       .from('orders')
       .upsert(cleanOrder);
@@ -147,10 +151,10 @@ export const fetchCustomerFromSupabase = async (phone: string) => {
       .select('*')
       .eq('phone', phone)
       .single();
-    if (error && error.code !== 'PGRST116') throw error; // PGRST116 is code for no rows found
+    if (error && error.code !== 'PGRST116') throw error;
     return data;
   } catch (err) {
-    console.error("Supabase fetch customer error:", err);
+    console.warn("Supabase customer not found or error:", err);
     return null;
   }
 };

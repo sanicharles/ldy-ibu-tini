@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { 
   LayoutDashboard, 
   PlusCircle, 
@@ -54,7 +54,12 @@ import {
   BarChart3,
   PieChart as PieChartIcon,
   ArrowDownRight,
-  Loader2
+  Loader2,
+  CloudCheck,
+  CloudUpload,
+  CloudOff,
+  Database,
+  ExternalLink
 } from 'lucide-react';
 import { 
   LineChart, 
@@ -91,11 +96,16 @@ import {
   fetchCustomerFromSupabase,
   upsertCustomerToSupabase
 } from './utils';
-import { supabase } from './supabase';
+import { supabase, isSupabaseConfigured } from './supabase';
 
 const ADMIN_PIN = "2115";
 const ADMIN_USERNAME = "Eneng_21";
 const OWNER_PHONE = "085695014434"; // Nomor WhatsApp Ibu Tini
+
+// Extending Order type for UI sync status
+interface AppOrder extends Order {
+  synced?: boolean;
+}
 
 // --- Shared Components ---
 
@@ -159,7 +169,7 @@ const ConfirmationDialog = ({ isOpen, title, message, onConfirm, onCancel, confi
   );
 };
 
-const OrderModal = ({ order, onClose, isAdmin, onUpdateStatus, onDeleteOrder }: { order: Order | null, onClose: () => void, isAdmin: boolean, onUpdateStatus: (id: string, s: OrderStatus) => void, onDeleteOrder: (id: string) => void }) => {
+const OrderModal = ({ order, onClose, isAdmin, onUpdateStatus, onDeleteOrder }: { order: AppOrder | null, onClose: () => void, isAdmin: boolean, onUpdateStatus: (id: string, s: OrderStatus) => void, onDeleteOrder: (id: string) => void }) => {
   const [confirmData, setConfirmData] = useState<{ type: 'status' | 'delete', status?: OrderStatus, title: string, msg: string } | null>(null);
 
   if (!order) return null;
@@ -254,6 +264,7 @@ const OrderModal = ({ order, onClose, isAdmin, onUpdateStatus, onDeleteOrder }: 
             <div className="flex items-center gap-3">
               <span className={`px-2.5 py-1 rounded-xl text-[10px] font-black text-white uppercase tracking-wider ${statusColors[order.status]}`}>{order.status}</span>
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{order.notaNumber}</p>
+              {!order.synced && <CloudUpload className="w-4 h-4 text-orange-400 animate-pulse" />}
             </div>
             <div className="flex items-center gap-2">
               {isAdmin && (
@@ -384,7 +395,7 @@ export default function App() {
   const [role, setRole] = useState<Role | null>(null);
   const [customerPhone, setCustomerPhone] = useState<string>('');
   const [customerProfile, setCustomerProfile] = useState<{name: string, address: string} | null>(null);
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<AppOrder[]>([]);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
   const [showWelcome, setShowWelcome] = useState(false);
@@ -395,8 +406,10 @@ export default function App() {
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'info' | 'danger' } | null>(null);
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<AppOrder | null>(null);
   const [dbStatus, setDbStatus] = useState<'offline' | 'syncing' | 'live'>('offline');
+  
+  const syncLock = useRef(false);
 
   // Auth state for Admin
   const [showAdminLogin, setShowAdminLogin] = useState(false);
@@ -405,28 +418,44 @@ export default function App() {
   const [adminAuthError, setAdminAuthError] = useState(false);
 
   const syncCustomerProfile = useCallback(async (phone: string) => {
-    const profile = await fetchCustomerFromSupabase(phone);
-    if (profile) {
-      setCustomerProfile({ name: profile.name, address: profile.address });
+    if (!isSupabaseConfigured()) return;
+    try {
+        const profile = await fetchCustomerFromSupabase(phone);
+        if (profile) {
+            setCustomerProfile({ name: profile.name, address: profile.address });
+        }
+    } catch (e) {
+        console.warn("Profile sync error", e);
     }
   }, []);
 
   const initializeSupabase = useCallback(async () => {
     setDbStatus('syncing');
+    
+    // Always start with local storage to avoid empty screens
+    const saved = localStorage.getItem('tini_orders');
+    let currentOrders: AppOrder[] = saved ? JSON.parse(saved) : [];
+    setOrders(currentOrders);
+
+    if (!isSupabaseConfigured()) {
+      setDbStatus('offline');
+      return;
+    }
+
     try {
       const remoteOrders = await fetchOrdersFromSupabase();
       
-      const saved = localStorage.getItem('tini_orders');
-      let localOrders: Order[] = saved ? JSON.parse(saved) : [];
+      // Merge logic: Remote is source of truth, but keep local "synced: false" flags for pending items
+      const mergedOrdersMap = new Map<string, AppOrder>();
+      
+      // Load local ones first
+      currentOrders.forEach(o => mergedOrdersMap.set(o.id, { ...o, synced: o.synced ?? false }));
+      
+      // Remote ones overwrite local ones and are definitely synced
+      remoteOrders.forEach(ro => mergedOrdersMap.set(ro.id, { ...ro, synced: true }));
 
-      const mergedOrders = [...remoteOrders];
-      localOrders.forEach(lo => {
-        if (!mergedOrders.some(ro => ro.id === lo.id)) {
-          mergedOrders.push(lo);
-        }
-      });
-
-      const finalOrders = mergedOrders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      const finalOrders = Array.from(mergedOrdersMap.values())
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       
       setOrders(finalOrders);
       localStorage.setItem('tini_orders', JSON.stringify(finalOrders));
@@ -436,31 +465,29 @@ export default function App() {
         syncCustomerProfile(customerPhone);
       }
 
+      // Realtime subscription
       const channel = supabase
-        .channel('schema-db-changes')
+        .channel('public:orders')
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'orders' },
           (payload) => {
             if (payload.eventType === 'INSERT') {
+              const newOrder = payload.new as AppOrder;
               setOrders(prev => {
-                if (prev.some(o => o.id === payload.new.id)) return prev;
-                return [payload.new as Order, ...prev];
+                if (prev.some(o => o.id === newOrder.id)) return prev;
+                return [{ ...newOrder, synced: true }, ...prev];
               });
               if (role === 'ADMIN') {
                 playNotificationSound();
-                setToast({ message: "Order Baru Masuk Real-time! 🧺", type: 'info' });
+                setToast({ message: "Pesanan Baru Masuk Cloud! 🧺", type: 'success' });
                 setTimeout(() => setToast(null), 5000);
               }
             } else if (payload.eventType === 'UPDATE') {
-              setOrders(prev => prev.map(o => o.id === payload.new.id ? (payload.new as Order) : o));
+              const updatedOrder = payload.new as AppOrder;
+              setOrders(prev => prev.map(o => o.id === updatedOrder.id ? { ...updatedOrder, synced: true } : o));
             } else if (payload.eventType === 'DELETE') {
               setOrders(prev => prev.filter(o => o.id !== payload.old.id));
-              if (selectedOrder?.id === payload.old.id) {
-                setSelectedOrder(null);
-                setToast({ message: "Pesanan ini telah dihapus.", type: 'info' });
-                setTimeout(() => setToast(null), 5000);
-              }
             }
           }
         )
@@ -470,20 +497,25 @@ export default function App() {
         supabase.removeChannel(channel);
       };
     } catch (err) {
-      console.error("Supabase connect failed:", err);
+      console.error("Supabase connection error:", err);
       setDbStatus('offline');
-      const saved = localStorage.getItem('tini_orders');
-      if (saved) setOrders(JSON.parse(saved));
     }
-  }, [role, selectedOrder, customerPhone, syncCustomerProfile]);
+  }, [role, customerPhone, syncCustomerProfile]);
+
+  // Effect to handle initialization and real-time cleanup correctly
+  useEffect(() => {
+    let cleanup: (() => void) | undefined;
+    const run = async () => {
+      const res = await initializeSupabase();
+      if (typeof res === 'function') cleanup = res;
+    };
+    run();
+    return () => { if (cleanup) cleanup(); };
+  }, [initializeSupabase]);
 
   useEffect(() => {
-    initializeSupabase();
-    
     const savedPhone = localStorage.getItem('tini_customer_phone');
-    if (savedPhone) {
-        setCustomerPhone(savedPhone);
-    }
+    if (savedPhone) setCustomerPhone(savedPhone);
 
     const savedRole = localStorage.getItem('tini_role');
     if (savedRole) {
@@ -495,7 +527,7 @@ export default function App() {
       setShowSplash(false);
       if (!savedRole) setShowWelcome(true);
     }, 2000);
-  }, [initializeSupabase]);
+  }, []);
 
   const handleAdminLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -533,55 +565,60 @@ export default function App() {
     setShowWelcome(true);
   };
 
-  const addOrder = async (newOrder: Order) => {
-    const updatedOrders = [newOrder, ...orders];
+  const addOrder = async (newOrder: AppOrder) => {
+    // Optimistic UI update
+    const optimisticOrder = { ...newOrder, synced: false };
+    const updatedOrders = [optimisticOrder, ...orders];
     setOrders(updatedOrders);
     localStorage.setItem('tini_orders', JSON.stringify(updatedOrders));
     
     playNotificationSound();
-    setToast({ message: "Pesanan disimpan. Sinkronisasi data dimulai...", type: 'info' });
+    setToast({ message: "Menyimpan pesanan...", type: 'info' });
+
+    if (!isSupabaseConfigured()) {
+      setToast({ message: "Offline: Tersimpan di perangkat (Database belum dikonfigurasi).", type: 'info' });
+      setTimeout(() => setToast(null), 5000);
+      setActiveTab('orders');
+      return;
+    }
 
     try {
-      // 1. Simpan Pesanan
-      const orderSuccess = await upsertOrderToSupabase(newOrder);
-      
-      // 2. Simpan/Update Profil Pelanggan Otomatis
-      await upsertCustomerToSupabase(newOrder.customerPhone, newOrder.customerName, newOrder.customerAddress);
-      
-      // Update state profil lokal
-      setCustomerProfile({ name: newOrder.customerName, address: newOrder.customerAddress });
+      // 1. Customer Sync
+      upsertCustomerToSupabase(newOrder.customerPhone, newOrder.customerName, newOrder.customerAddress)
+        .then(() => setCustomerProfile({ name: newOrder.customerName, address: newOrder.customerAddress }))
+        .catch(e => console.warn("Customer auto-sync failed", e));
 
-      if (orderSuccess) {
-        setToast({ message: `Nota ${newOrder.notaNumber} BERHASIL DISIMPAN KE SERVER!`, type: 'success' });
+      // 2. Order Sync
+      const success = await upsertOrderToSupabase(newOrder);
+      if (success) {
+        setOrders(prev => prev.map(o => o.id === newOrder.id ? { ...o, synced: true } : o));
+        setToast({ message: `Nota ${newOrder.notaNumber} BERHASIL DISIMPAN KE CLOUD!`, type: 'success' });
       } else {
-        setToast({ message: "Server sibuk. Pesanan tetap aman di perangkat Anda.", type: 'danger' });
+        setToast({ message: "Gagal sinkron server, data tetap aman di perangkat.", type: 'danger' });
       }
 
+      // 3. WhatsApp Integration
       const msg = `*PESANAN BARU - LAUNDRY IBU TINI*\n` +
                  `------------------------------------\n` +
                  `Nota: *${newOrder.notaNumber}*\n` +
-                 `Tanggal: ${new Date(newOrder.createdAt).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}\n\n` +
+                 `Tanggal: ${new Date(newOrder.createdAt).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })}\n\n` +
                  `*PELANGGAN*\n` +
                  `Nama: *${newOrder.customerName}*\n` +
-                 `WhatsApp: ${newOrder.customerPhone}\n` +
                  `Alamat: ${newOrder.customerAddress}\n\n` +
                  `*LAYANAN*\n` +
                  `Layanan: *${newOrder.serviceType}*\n` +
                  `Berat/Qty: ${newOrder.weight} Unit/Kg\n` +
-                 `Pengiriman: ${newOrder.deliveryMethod}\n` +
-                 (newOrder.specialRequest ? `Catatan: _${newOrder.specialRequest}_\n` : '') +
                  `------------------------------------\n` +
                  `*TOTAL: ${formatIDR(newOrder.totalPrice)}*\n\n` +
-                 `Lacak Pesanan: ${window.location.origin}\n\n` +
-                 `_Mohon segera diproses ya Bu Tini. Terima kasih!_`;
+                 `Lacak: ${window.location.origin}`;
                  
       setTimeout(() => {
-        sendWhatsAppMessage("085695014434", msg);
+        sendWhatsAppMessage(OWNER_PHONE, msg);
         setActiveTab('orders');
-      }, 300);
+      }, 500);
 
     } catch (err) {
-      console.error("Database Sync Error:", err);
+      console.error("Critical Sync Error:", err);
     }
     
     setTimeout(() => setToast(null), 5000);
@@ -591,33 +628,70 @@ export default function App() {
     const order = orders.find(o => o.id === id);
     if (!order) return;
     
-    const updatedOrder = { ...order, status: newStatus };
+    const updatedOrder = { ...order, status: newStatus, synced: false };
     const updatedOrders = orders.map(o => o.id === id ? updatedOrder : o);
     setOrders(updatedOrders);
     localStorage.setItem('tini_orders', JSON.stringify(updatedOrders));
     
     if (selectedOrder?.id === id) setSelectedOrder(updatedOrder);
 
+    if (!isSupabaseConfigured()) return;
+
     const success = await upsertOrderToSupabase(updatedOrder);
     if (success) {
+        setOrders(prev => prev.map(o => o.id === id ? { ...o, synced: true } : o));
         setToast({ message: `Status diperbarui: ${newStatus}`, type: 'success' });
+    } else {
+        setToast({ message: "Status diperbarui lokal (Menunggu Online)", type: 'info' });
     }
     setTimeout(() => setToast(null), 4000);
   };
 
   const handleDeleteOrder = async (id: string) => {
-    const order = orders.find(o => o.id === id);
-    if (!order) return;
-
     const updatedOrders = orders.filter(o => o.id !== id);
     setOrders(updatedOrders);
     localStorage.setItem('tini_orders', JSON.stringify(updatedOrders));
     
+    if (!isSupabaseConfigured()) return;
+
     const success = await deleteOrderFromSupabase(id);
     if (success) {
-      setToast({ message: `Pesanan ${order.notaNumber} dihapus selamanya.`, type: 'danger' });
+      setToast({ message: `Pesanan dihapus selamanya.`, type: 'danger' });
     }
     setTimeout(() => setToast(null), 5000);
+  };
+
+  const retrySyncAll = async () => {
+    if (syncLock.current) return;
+    const unsynced = orders.filter(o => !o.synced);
+    if (unsynced.length === 0) {
+      setToast({ message: "Semua data sudah sinkron!", type: 'success' });
+      return;
+    }
+
+    if (!isSupabaseConfigured()) {
+        setToast({ message: "Gagal: Database belum dikonfigurasi.", type: 'danger' });
+        return;
+    }
+
+    syncLock.current = true;
+    setDbStatus('syncing');
+    let count = 0;
+    
+    try {
+        for (const o of unsynced) {
+          const success = await upsertOrderToSupabase(o);
+          if (success) {
+            setOrders(prev => prev.map(item => item.id === o.id ? { ...item, synced: true } : item));
+            count++;
+          }
+        }
+        setToast({ message: `${count} data berhasil diunggah ke cloud.`, type: 'success' });
+    } finally {
+        setDbStatus('live');
+        syncLock.current = false;
+        setTimeout(() => setToast(null), 4000);
+    }
   };
 
   const stats = useMemo(() => {
@@ -703,6 +777,8 @@ export default function App() {
       done: myOrders.filter(o => o.status === 'Selesai').length,
     };
   }, [orders, role, customerPhone]);
+
+  const dbConfigured = isSupabaseConfigured();
 
   if (showSplash) {
     return (
@@ -950,12 +1026,33 @@ export default function App() {
               <Zap className={`w-3.5 h-3.5 ${dbStatus === 'live' ? 'pulse' : ''}`} />
               <span>{dbStatus === 'live' ? 'Live' : 'Offline'}</span>
             </div>
+            {orders.some(o => !o.synced) && (
+              <button onClick={retrySyncAll} className="p-4 bg-orange-50 border border-orange-100 rounded-2xl hover:bg-orange-100 transition-all active:scale-95 group" title="Sync Pending Data">
+                <CloudUpload className="w-6 h-6 text-orange-600 animate-pulse" />
+              </button>
+            )}
             <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-4 bg-white shadow-sm border border-slate-100 rounded-2xl hover:bg-slate-50 transition-all active:scale-95">
               {isDarkMode ? <Sun className="w-6 h-6 text-orange-500" /> : <Moon className="w-6 h-6 text-blue-600" />}
             </button>
             <div className="w-12 h-12 md:w-14 md:h-14 bg-blue-600 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-lg shadow-blue-100 shrink-0">{role === 'ADMIN' ? 'A' : 'P'}</div>
           </div>
         </header>
+
+        {/* Supabase Not Configured Warning */}
+        {!dbConfigured && (
+            <div className="mx-5 md:mx-10 mt-5 p-6 bg-red-50 border-2 border-red-100 rounded-[2rem] flex flex-col md:flex-row items-center gap-6 animate-pulse">
+                <div className="w-16 h-16 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center shrink-0">
+                    <Database className="w-8 h-8" />
+                </div>
+                <div className="flex-1 text-center md:text-left">
+                    <h4 className="text-lg font-black text-red-900 tracking-tight">Database Cloud Belum Aktif</h4>
+                    <p className="text-sm font-bold text-red-600/70 mt-1">Data saat ini hanya tersimpan di browser Anda. Harap konfigurasikan SUPABASE_URL & SUPABASE_ANON_KEY di file supabase.ts untuk sinkronisasi cloud.</p>
+                </div>
+                <a href="https://supabase.com" target="_blank" className="px-6 py-3 bg-red-600 text-white rounded-xl font-black text-xs uppercase tracking-widest flex items-center gap-2 hover:bg-red-700 transition-all">
+                    BUKA SUPABASE <ExternalLink className="w-4 h-4" />
+                </a>
+            </div>
+        )}
 
         <main className="p-5 md:p-10 max-w-7xl mx-auto w-full pb-32">
           {activeTab === 'dashboard' && role === 'ADMIN' && (
@@ -1100,11 +1197,9 @@ export default function App() {
                     <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 w-6 h-6 group-focus-within:text-blue-500 transition-colors" />
                     <input type="text" placeholder={role === 'ADMIN' ? "Cari nama atau no nota..." : "Cari pesanan saya..."} className="w-full pl-16 pr-8 py-6 bg-white border border-slate-100 rounded-[2rem] outline-none shadow-sm focus:ring-4 focus:ring-blue-100 transition-all text-lg font-bold" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
                   </div>
-                  {role === 'CUSTOMER' && (
-                    <button onClick={() => initializeSupabase()} className="p-6 bg-blue-600 rounded-[1.5rem] hover:bg-blue-700 text-white shadow-xl shadow-blue-200 transition-all active:scale-90 group" title="Refresh">
-                      <RefreshCcw className={`w-7 h-7 ${dbStatus === 'syncing' ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} />
-                    </button>
-                  )}
+                  <button onClick={() => initializeSupabase()} className="p-6 bg-blue-600 rounded-[1.5rem] hover:bg-blue-700 text-white shadow-xl shadow-blue-200 transition-all active:scale-90 group" title="Refresh">
+                    <RefreshCcw className={`w-7 h-7 ${dbStatus === 'syncing' ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} />
+                  </button>
                 </div>
               </div>
 
@@ -1121,9 +1216,9 @@ export default function App() {
                           <FilterX className="w-20 h-20 text-blue-100" />
                        </div>
                     </div>
-                    <h3 className="text-4xl font-black text-slate-900 tracking-tighter">Data Masih Kosong</h3>
+                    <h3 className="text-4xl font-black text-slate-900 tracking-tighter">Data Kosong</h3>
                     <p className="text-slate-400 font-bold max-w-sm mx-auto mt-4 leading-relaxed px-6">
-                      {role === 'CUSTOMER' ? `Belum ada riwayat pesanan aktif untuk nomor ${customerPhone}.` : 'Tidak ditemukan pesanan dengan kriteria pencarian ini.'}
+                      {role === 'CUSTOMER' ? `Belum ada pesanan untuk nomor ${customerPhone}.` : 'Tidak ditemukan pesanan.'}
                     </p>
                     {role === 'CUSTOMER' && (
                       <button onClick={() => setActiveTab('add')} className="mt-12 px-12 py-6 bg-blue-600 text-white rounded-[2rem] font-black text-xl shadow-2xl shadow-blue-200 hover:-translate-y-2 active:scale-95 transition-all flex items-center justify-center gap-4 mx-auto">
@@ -1149,9 +1244,9 @@ export default function App() {
   );
 }
 
-function MobileNavItem({ onClick, active, icon: Icon, label, danger }: any) {
+function MobileNavItem({ onClick, active, icon: Icon, label }: any) {
   return (
-    <button onClick={onClick} className={`flex flex-col items-center gap-1.5 transition-all duration-300 ${active ? 'text-blue-600 scale-110' : danger ? 'text-red-400' : 'text-slate-400'}`}>
+    <button onClick={onClick} className={`flex flex-col items-center gap-1.5 transition-all duration-300 ${active ? 'text-blue-600 scale-110' : 'text-slate-400'}`}>
       <div className={`p-2.5 rounded-2xl ${active ? 'bg-blue-50 shadow-sm shadow-blue-100' : ''}`}>
         <Icon className="w-6 h-6" />
       </div>
@@ -1194,7 +1289,7 @@ function ReportMetric({ icon: Icon, label, value, sub, color }: any) {
   );
 }
 
-function OrderCard({ order, role, onClick }: any) {
+function OrderCard({ order, role, onClick }: { order: AppOrder, role: Role | null, onClick: () => void }) {
   const isSelesai = order.status === 'Selesai';
   const isProses = order.status === 'Proses';
   
@@ -1210,8 +1305,19 @@ function OrderCard({ order, role, onClick }: any) {
           </div>
           <h4 className="text-3xl font-black text-slate-900 leading-none tracking-tight">{order.customerName}</h4>
         </div>
-        <div className={`px-4 py-2 rounded-2xl text-[10px] font-black text-white uppercase tracking-widest shadow-xl transition-transform group-hover:scale-110 ${order.status === 'Baru' ? 'bg-blue-600 shadow-blue-100' : isProses ? 'bg-orange-500 shadow-orange-100' : 'bg-green-600 shadow-green-100'}`}>
-          {order.status}
+        <div className="flex flex-col items-end gap-2">
+          <div className={`px-4 py-2 rounded-2xl text-[10px] font-black text-white uppercase tracking-widest shadow-xl transition-transform group-hover:scale-110 ${order.status === 'Baru' ? 'bg-blue-600 shadow-blue-100' : isProses ? 'bg-orange-500 shadow-orange-100' : 'bg-green-600 shadow-green-100'}`}>
+            {order.status}
+          </div>
+          {order.synced ? (
+            <div className="flex items-center gap-1 text-[8px] font-black text-green-500 uppercase tracking-widest">
+              <CloudCheck className="w-3 h-3" /> Cloud
+            </div>
+          ) : (
+            <div className="flex items-center gap-1 text-[8px] font-black text-orange-400 uppercase tracking-widest animate-pulse">
+              <CloudUpload className="w-3 h-3" /> Pending
+            </div>
+          )}
         </div>
       </div>
       
@@ -1306,13 +1412,12 @@ function OrderForm({ role, prefilledPhone, prefilledProfile, onAdd }: any) {
   
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Efek untuk mengisi data dari profil yang ditemukan di database
   useEffect(() => {
     if (prefilledProfile) {
       setFormData(prev => ({
         ...prev,
-        customerName: prefilledProfile.name,
-        customerAddress: prefilledProfile.address
+        customerName: prefilledProfile.name || prev.customerName,
+        customerAddress: prefilledProfile.address || prev.customerAddress
       }));
     }
   }, [prefilledProfile]);
@@ -1328,7 +1433,7 @@ function OrderForm({ role, prefilledPhone, prefilledProfile, onAdd }: any) {
     
     setIsSubmitting(true);
     
-    const newOrder: Order = {
+    const newOrder: AppOrder = {
       id: Date.now().toString(),
       notaNumber: generateNotaNumber(),
       ...formData,
