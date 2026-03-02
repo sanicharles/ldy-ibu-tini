@@ -59,7 +59,10 @@ import {
   CloudUpload,
   CloudOff,
   Database,
-  ExternalLink
+  ExternalLink,
+  Volume2,
+  VolumeX,
+  Bell
 } from 'lucide-react';
 import { 
   LineChart, 
@@ -82,7 +85,8 @@ import {
   Role, 
   OrderStatus, 
   ServiceType, 
-  SERVICE_PRICES 
+  Service,
+  DEFAULT_SERVICES
 } from './types';
 import { 
   formatIDR, 
@@ -105,6 +109,11 @@ const OWNER_PHONE = "085695014434"; // Nomor WhatsApp Ibu Tini
 // Extending Order type for UI sync status
 interface AppOrder extends Order {
   synced?: boolean;
+}
+
+interface AppSettings {
+  soundEnabled: boolean;
+  pushEnabled: boolean;
 }
 
 // --- Shared Components ---
@@ -399,7 +408,7 @@ export default function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
   const [showWelcome, setShowWelcome] = useState(false);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'add' | 'reports'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'add' | 'reports' | 'settings'>('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'Semua' | OrderStatus>('Semua');
   const [serviceFilter, setServiceFilter] = useState<ServiceType | 'Semua'>('Semua');
@@ -408,7 +417,16 @@ export default function App() {
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'info' | 'danger' } | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<AppOrder | null>(null);
   const [dbStatus, setDbStatus] = useState<'offline' | 'syncing' | 'live'>('offline');
+  const [appSettings, setAppSettings] = useState<AppSettings>({
+    soundEnabled: true,
+    pushEnabled: true
+  });
   
+  const [services, setServices] = useState<Service[]>(() => {
+    const saved = localStorage.getItem('tini_services');
+    return saved ? JSON.parse(saved) : DEFAULT_SERVICES;
+  });
+
   const syncLock = useRef(false);
 
   // Auth state for Admin
@@ -416,6 +434,22 @@ export default function App() {
   const [adminUsernameInput, setAdminUsernameInput] = useState('');
   const [adminPinInput, setAdminPinInput] = useState('');
   const [adminAuthError, setAdminAuthError] = useState(false);
+
+  // Persist settings
+  useEffect(() => {
+    const savedSettings = localStorage.getItem('tini_settings');
+    if (savedSettings) {
+      setAppSettings(JSON.parse(savedSettings));
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('tini_services', JSON.stringify(services));
+  }, [services]);
+
+  useEffect(() => {
+    localStorage.setItem('tini_settings', JSON.stringify(appSettings));
+  }, [appSettings]);
 
   const syncCustomerProfile = useCallback(async (phone: string) => {
     if (!isSupabaseConfigured()) return;
@@ -478,8 +512,11 @@ export default function App() {
                 if (prev.some(o => o.id === newOrder.id)) return prev;
                 return [{ ...newOrder, synced: true }, ...prev];
               });
+              
               if (role === 'ADMIN') {
-                playNotificationSound();
+                if (appSettings.soundEnabled) playNotificationSound();
+                if (appSettings.pushEnabled) showPushNotification("Pesanan Baru!", `Pesanan dari ${newOrder.customerName} telah diterima.`);
+                
                 setToast({ message: "Pesanan Baru Masuk Cloud! 🧺", type: 'success' });
                 setTimeout(() => setToast(null), 5000);
               }
@@ -500,7 +537,7 @@ export default function App() {
       console.error("Supabase connection error:", err);
       setDbStatus('offline');
     }
-  }, [role, customerPhone, syncCustomerProfile]);
+  }, [role, customerPhone, syncCustomerProfile, appSettings.soundEnabled, appSettings.pushEnabled]);
 
   // Effect to handle initialization and real-time cleanup correctly
   useEffect(() => {
@@ -572,7 +609,7 @@ export default function App() {
     setOrders(updatedOrders);
     localStorage.setItem('tini_orders', JSON.stringify(updatedOrders));
     
-    playNotificationSound();
+    if (appSettings.soundEnabled) playNotificationSound();
     setToast({ message: "Menyimpan pesanan...", type: 'info' });
 
     if (!isSupabaseConfigured()) {
@@ -729,10 +766,10 @@ export default function App() {
       return { name: dateStr, revenue: dayTotal };
     });
 
-    const serviceData = Object.keys(SERVICE_PRICES).map(s => {
-      const count = orders.filter(o => o.serviceType === s).length;
-      const total = orders.filter(o => o.serviceType === s).reduce((sum, o) => sum + o.totalPrice, 0);
-      return { name: s, count, total };
+    const serviceData = services.map(s => {
+      const count = orders.filter(o => o.serviceType === s.name).length;
+      const total = orders.filter(o => o.serviceType === s.name).reduce((sum, o) => sum + o.totalPrice, 0);
+      return { name: s.name, count, total };
     }).sort((a, b) => b.total - a.total);
 
     return { 
@@ -985,6 +1022,7 @@ export default function App() {
                 <SidebarLink icon={ClipboardList} label="Data Pesanan" active={activeTab === 'orders'} onClick={() => setActiveTab('orders')} />
                 <SidebarLink icon={PlusCircle} label="Tambah Order" active={activeTab === 'add'} onClick={() => setActiveTab('add')} />
                 <SidebarLink icon={BarChart3} label="Laporan" active={activeTab === 'reports'} onClick={() => setActiveTab('reports')} />
+                <SidebarLink icon={Settings} label="Pengaturan" active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} />
               </>
             ) : (
               <>
@@ -1017,7 +1055,7 @@ export default function App() {
         <header className="sticky top-0 z-40 bg-white/70 backdrop-blur-2xl border-b border-slate-100 p-6 md:p-10 flex items-center justify-between">
           <div>
             <h2 className="text-2xl md:text-4xl font-black text-slate-900 tracking-tighter">
-              {activeTab === 'dashboard' ? 'Overview' : activeTab === 'reports' ? 'Laporan Keuangan' : activeTab === 'add' ? 'Registrasi Baru' : 'Manajemen Pesanan'}
+              {activeTab === 'dashboard' ? 'Overview' : activeTab === 'reports' ? 'Laporan Keuangan' : activeTab === 'add' ? 'Registrasi Baru' : activeTab === 'settings' ? 'Konfigurasi Sistem' : 'Manajemen Pesanan'}
             </h2>
             {role === 'CUSTOMER' && <p className="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] mt-2 flex items-center gap-2"><ZapIcon className="w-3.5 h-3.5 pulse" /> Koneksi Real-time Aktif</p>}
           </div>
@@ -1178,6 +1216,7 @@ export default function App() {
               onAdd={addOrder} 
               prefilledPhone={customerPhone} 
               prefilledProfile={customerProfile} 
+              services={services}
             />
           )}
 
@@ -1230,6 +1269,133 @@ export default function App() {
               </div>
             </div>
           )}
+
+          {activeTab === 'settings' && role === 'ADMIN' && (
+            <div className="max-w-4xl mx-auto space-y-10 animate-fade-in">
+              <Card className="p-10 md:p-14 overflow-hidden relative">
+                <div className="absolute top-0 right-0 w-60 h-60 bg-blue-50 rounded-full blur-[80px] -mr-32 -mt-32"></div>
+                <div className="flex items-center gap-6 mb-12 relative z-10">
+                  <div className="w-16 h-16 bg-blue-600 rounded-3xl flex items-center justify-center text-white shadow-xl shadow-blue-100">
+                    <Settings className="w-8 h-8" />
+                  </div>
+                  <div>
+                    <h3 className="text-3xl font-black tracking-tighter">Pengaturan Sistem</h3>
+                    <p className="text-slate-400 font-bold">Sesuaikan preferensi aplikasi Anda</p>
+                  </div>
+                </div>
+
+                <div className="space-y-10 relative z-10">
+                  <section>
+                    <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] mb-8 border-b border-slate-100 pb-4">NOTIFIKASI & ALERTS</h4>
+                    <div className="space-y-6">
+                      <ToggleSetting 
+                        icon={Volume2} 
+                        label="Suara Pemberitahuan" 
+                        desc="Mainkan nada saat ada pesanan baru masuk secara real-time."
+                        active={appSettings.soundEnabled}
+                        onToggle={() => setAppSettings(prev => ({...prev, soundEnabled: !prev.soundEnabled}))}
+                      />
+                      <ToggleSetting 
+                        icon={Bell} 
+                        label="Notifikasi Push Browser" 
+                        desc="Tampilkan popup notifikasi di layar perangkat Anda."
+                        active={appSettings.pushEnabled}
+                        onToggle={() => setAppSettings(prev => ({...prev, pushEnabled: !prev.pushEnabled}))}
+                      />
+                    </div>
+                  </section>
+
+                  <section>
+                    <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] mb-8 border-b border-slate-100 pb-4">MANAJEMEN LAYANAN</h4>
+                    <div className="space-y-4">
+                      {services.map((service) => (
+                        <div key={service.id} className="p-6 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between gap-4">
+                          <div>
+                            <p className="font-bold text-slate-900">{service.name}</p>
+                            <p className="text-sm font-bold text-blue-600">{formatIDR(service.price)}</p>
+                          </div>
+                          <button 
+                            onClick={() => {
+                              if(confirm(`Hapus layanan ${service.name}?`)) {
+                                setServices(services.filter(s => s.id !== service.id));
+                              }
+                            }}
+                            className="p-3 text-red-500 hover:bg-red-50 rounded-xl transition-colors"
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        </div>
+                      ))}
+                      <button 
+                        onClick={() => {
+                          const name = prompt("Nama Layanan Baru:");
+                          if (!name) return;
+                          const priceStr = prompt("Harga (Rp):");
+                          if (!priceStr) return;
+                          const price = parseInt(priceStr, 10);
+                          if (isNaN(price)) return alert("Harga tidak valid");
+                          
+                          setServices([...services, {
+                            id: Date.now().toString(),
+                            name,
+                            price
+                          }]);
+                        }}
+                        className="w-full py-4 border-2 border-dashed border-blue-200 text-blue-600 font-bold rounded-2xl hover:bg-blue-50 transition-colors flex items-center justify-center gap-2"
+                      >
+                        <PlusCircle className="w-5 h-5" /> Tambah Layanan
+                      </button>
+                    </div>
+                  </section>
+
+                  <section>
+                    <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] mb-8 border-b border-slate-100 pb-4">MANAJEMEN DATABASE</h4>
+                    <div className="p-8 bg-blue-50/50 rounded-[2rem] border border-blue-100 flex flex-col md:flex-row items-center justify-between gap-6">
+                      <div className="flex items-center gap-6">
+                        <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-blue-600 shadow-sm border border-blue-100">
+                          <Database className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-slate-900">Status Sinkronisasi</p>
+                          <p className="text-xs font-bold text-slate-500">{dbStatus === 'live' ? 'Terhubung dengan Cloud Database' : 'Bekerja secara Offline'}</p>
+                        </div>
+                      </div>
+                      <Button onClick={retrySyncAll} variant="outline" className="px-8 whitespace-nowrap">SINKRONISASI MANUAL</Button>
+                    </div>
+                  </section>
+
+                  <section>
+                    <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] mb-8 border-b border-slate-100 pb-4">TENTANG APLIKASI</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Versi</p>
+                        <p className="font-black text-slate-800">2.4.0 (Latest)</p>
+                      </div>
+                      <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Status Lisensi</p>
+                        <p className="font-black text-green-600 flex items-center gap-2"><ShieldCheck className="w-4 h-4" /> Professional</p>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+              </Card>
+
+              <div className="p-10 bg-red-50 rounded-[2.5rem] border border-red-100 flex flex-col md:flex-row items-center justify-between gap-6 group">
+                <div className="flex items-center gap-6">
+                   <div className="w-14 h-14 bg-white rounded-[1.25rem] flex items-center justify-center text-red-500 shadow-sm group-hover:scale-110 transition-transform">
+                      <LogOut className="w-7 h-7" />
+                   </div>
+                   <div className="text-center md:text-left">
+                      <p className="font-black text-red-900 text-lg">Keluar dari Sesi</p>
+                      <p className="text-sm font-bold text-red-600/60">Akses Admin akan terkunci kembali.</p>
+                   </div>
+                </div>
+                <button onClick={handleLogout} className="px-10 py-5 bg-red-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-red-200 hover:bg-red-700 active:scale-95 transition-all">
+                  KELUAR SEKARANG
+                </button>
+              </div>
+            </div>
+          )}
         </main>
       </div>
 
@@ -1239,7 +1405,30 @@ export default function App() {
         {role === 'ADMIN' && <MobileNavItem onClick={() => setActiveTab('reports')} active={activeTab === 'reports'} icon={BarChart3} label="Laporan" />}
         <MobileNavItem onClick={() => setActiveTab('add')} active={activeTab === 'add'} icon={PlusCircle} label="Tambah" />
         <MobileNavItem onClick={() => setActiveTab('orders')} active={activeTab === 'orders'} icon={ClipboardList} label="Data" />
+        {role === 'ADMIN' && <MobileNavItem onClick={() => setActiveTab('settings')} active={activeTab === 'settings'} icon={Settings} label="Setting" />}
       </div>
+    </div>
+  );
+}
+
+function ToggleSetting({ icon: Icon, label, desc, active, onToggle }: any) {
+  return (
+    <div className="flex items-start justify-between gap-6 group">
+      <div className="flex items-start gap-6">
+        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${active ? 'bg-blue-600 text-white shadow-lg shadow-blue-100' : 'bg-slate-100 text-slate-400'}`}>
+          <Icon className="w-6 h-6" />
+        </div>
+        <div className="flex-1">
+          <p className="font-bold text-slate-900 leading-none mb-2">{label}</p>
+          <p className="text-sm font-bold text-slate-400 leading-relaxed max-w-sm">{desc}</p>
+        </div>
+      </div>
+      <button 
+        onClick={onToggle}
+        className={`w-14 h-8 rounded-full relative transition-all duration-300 shrink-0 ${active ? 'bg-blue-600 shadow-inner' : 'bg-slate-200'}`}
+      >
+        <div className={`absolute top-1 w-6 h-6 bg-white rounded-full shadow-md transition-all duration-300 ${active ? 'left-7' : 'left-1'}`}></div>
+      </button>
     </div>
   );
 }
@@ -1399,13 +1588,13 @@ function StatCard({ label, value, icon: Icon, color }: any) {
   );
 }
 
-function OrderForm({ role, prefilledPhone, prefilledProfile, onAdd }: any) {
+function OrderForm({ role, prefilledPhone, prefilledProfile, onAdd, services }: any) {
   const [formData, setFormData] = useState({
     customerName: '',
     customerPhone: prefilledPhone || '',
     customerAddress: '',
     weight: 0,
-    serviceType: 'Cuci Setrika' as ServiceType,
+    serviceType: services[0]?.name || '',
     specialRequest: '',
     deliveryMethod: 'Ambil Sendiri' as 'Antar/Jemput' | 'Ambil Sendiri'
   });
@@ -1422,7 +1611,8 @@ function OrderForm({ role, prefilledPhone, prefilledProfile, onAdd }: any) {
     }
   }, [prefilledProfile]);
 
-  const total = formData.weight * (SERVICE_PRICES[formData.serviceType] || 0);
+  const selectedService = services.find((s: Service) => s.name === formData.serviceType);
+  const total = formData.weight * (selectedService?.price || 0);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1451,7 +1641,7 @@ function OrderForm({ role, prefilledPhone, prefilledProfile, onAdd }: any) {
         customerPhone: prefilledPhone || '', 
         customerAddress: '', 
         weight: 0, 
-        serviceType: 'Cuci Setrika', 
+        serviceType: services[0]?.name || '', 
         specialRequest: '', 
         deliveryMethod: 'Ambil Sendiri' 
       });
@@ -1492,7 +1682,7 @@ function OrderForm({ role, prefilledPhone, prefilledProfile, onAdd }: any) {
               <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Jenis Layanan Laundry</label>
               <div className="relative">
                 <select className="w-full px-8 py-6 border border-slate-100 bg-slate-50/50 rounded-[2rem] outline-none focus:bg-white focus:ring-4 focus:ring-blue-100 transition-all font-black text-blue-600 appearance-none cursor-pointer" value={formData.serviceType} onChange={(e) => setFormData({...formData, serviceType: e.target.value as ServiceType})}>
-                  {Object.keys(SERVICE_PRICES).map(s => <option key={s} value={s}>{s} • {formatIDR(SERVICE_PRICES[s as ServiceType])}</option>)}
+                  {services.map((s: Service) => <option key={s.id} value={s.name}>{s.name} • {formatIDR(s.price)}</option>)}
                 </select>
                 <div className="absolute right-8 top-1/2 -translate-y-1/2 pointer-events-none text-blue-400"><ChevronRight className="w-6 h-6 rotate-90" /></div>
               </div>

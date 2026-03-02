@@ -1,26 +1,24 @@
 
 export type OrderStatus = 'Baru' | 'Proses' | 'Selesai';
 
-export type ServiceType = 
-  | 'Cuci Setrika' 
-  | 'Cuci Lipat' 
-  | 'Setrika' 
-  | 'Express' 
-  | 'Handuk' 
-  | 'Sprei 1 Set' 
-  | 'Bed Cover' 
-  | 'Hordeng 1 Set';
+export type ServiceType = string;
 
-export const SERVICE_PRICES: Record<ServiceType, number> = {
-  'Cuci Setrika': 6000,
-  'Cuci Lipat': 5000,
-  'Setrika': 5000,
-  'Express': 10000,
-  'Handuk': 2000,
-  'Sprei 1 Set': 3000,
-  'Bed Cover': 30000,
-  'Hordeng 1 Set': 25000,
-};
+export interface Service {
+  id: string;
+  name: string;
+  price: number;
+}
+
+export const DEFAULT_SERVICES: Service[] = [
+  { id: '1', name: 'Cuci Setrika', price: 6000 },
+  { id: '2', name: 'Cuci Lipat', price: 5000 },
+  { id: '3', name: 'Setrika', price: 5000 },
+  { id: '4', name: 'Express', price: 10000 },
+  { id: '5', name: 'Handuk', price: 2000 },
+  { id: '6', name: 'Sprei 1 Set', price: 3000 },
+  { id: '7', name: 'Bed Cover', price: 30000 },
+  { id: '8', name: 'Hordeng 1 Set', price: 25000 },
+];
 
 export interface Order {
   id: string;
