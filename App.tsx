@@ -426,6 +426,9 @@ export default function App() {
     const saved = localStorage.getItem('tini_services');
     return saved ? JSON.parse(saved) : DEFAULT_SERVICES;
   });
+  const [isAddingService, setIsAddingService] = useState(false);
+  const [newService, setNewService] = useState({ name: '', price: '' });
+  const [serviceToDelete, setServiceToDelete] = useState<Service | null>(null);
 
   const syncLock = useRef(false);
 
@@ -1003,6 +1006,19 @@ export default function App() {
     <div className={`min-h-screen pb-24 md:pb-0 ${isDarkMode ? 'dark text-white' : 'bg-transparent'}`}>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       <OrderModal order={selectedOrder} onClose={() => setSelectedOrder(null)} isAdmin={role === 'ADMIN'} onUpdateStatus={updateOrderStatus} onDeleteOrder={handleDeleteOrder} />
+      <ConfirmationDialog 
+        isOpen={!!serviceToDelete}
+        title="Hapus Layanan"
+        message={`Apakah Anda yakin ingin menghapus layanan ${serviceToDelete?.name}?`}
+        onConfirm={() => {
+          if (serviceToDelete) {
+            setServices(services.filter(s => s.id !== serviceToDelete.id));
+            setServiceToDelete(null);
+          }
+        }}
+        onCancel={() => setServiceToDelete(null)}
+        isDanger={true}
+      />
       
       {/* Sidebar Desktop */}
       <div className="hidden md:fixed md:inset-y-0 md:flex md:w-72 md:flex-col">
@@ -1315,36 +1331,61 @@ export default function App() {
                             <p className="text-sm font-bold text-blue-600">{formatIDR(service.price)}</p>
                           </div>
                           <button 
-                            onClick={() => {
-                              if(confirm(`Hapus layanan ${service.name}?`)) {
-                                setServices(services.filter(s => s.id !== service.id));
-                              }
-                            }}
+                            onClick={() => setServiceToDelete(service)}
                             className="p-3 text-red-500 hover:bg-red-50 rounded-xl transition-colors"
                           >
                             <Trash2 className="w-5 h-5" />
                           </button>
                         </div>
                       ))}
-                      <button 
-                        onClick={() => {
-                          const name = prompt("Nama Layanan Baru:");
-                          if (!name) return;
-                          const priceStr = prompt("Harga (Rp):");
-                          if (!priceStr) return;
-                          const price = parseInt(priceStr, 10);
-                          if (isNaN(price)) return alert("Harga tidak valid");
-                          
-                          setServices([...services, {
-                            id: Date.now().toString(),
-                            name,
-                            price
-                          }]);
-                        }}
-                        className="w-full py-4 border-2 border-dashed border-blue-200 text-blue-600 font-bold rounded-2xl hover:bg-blue-50 transition-colors flex items-center justify-center gap-2"
-                      >
-                        <PlusCircle className="w-5 h-5" /> Tambah Layanan
-                      </button>
+                      {isAddingService ? (
+                        <div className="p-6 bg-blue-50/50 rounded-2xl border border-blue-100 space-y-4">
+                          <input 
+                            type="text" 
+                            placeholder="Nama Layanan" 
+                            className="w-full px-4 py-3 rounded-xl border border-blue-200 outline-none focus:ring-2 focus:ring-blue-500"
+                            value={newService.name}
+                            onChange={e => setNewService({...newService, name: e.target.value})}
+                          />
+                          <input 
+                            type="number" 
+                            placeholder="Harga (Rp)" 
+                            className="w-full px-4 py-3 rounded-xl border border-blue-200 outline-none focus:ring-2 focus:ring-blue-500"
+                            value={newService.price}
+                            onChange={e => setNewService({...newService, price: e.target.value})}
+                          />
+                          <div className="flex gap-2">
+                            <Button 
+                              className="flex-1" 
+                              onClick={() => {
+                                if (!newService.name || !newService.price) return;
+                                setServices([...services, {
+                                  id: Date.now().toString(),
+                                  name: newService.name,
+                                  price: parseInt(newService.price, 10)
+                                }]);
+                                setNewService({ name: '', price: '' });
+                                setIsAddingService(false);
+                              }}
+                            >Simpan</Button>
+                            <Button 
+                              variant="secondary" 
+                              className="flex-1" 
+                              onClick={() => {
+                                setIsAddingService(false);
+                                setNewService({ name: '', price: '' });
+                              }}
+                            >Batal</Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button 
+                          onClick={() => setIsAddingService(true)}
+                          className="w-full py-4 border-2 border-dashed border-blue-200 text-blue-600 font-bold rounded-2xl hover:bg-blue-50 transition-colors flex items-center justify-center gap-2"
+                        >
+                          <PlusCircle className="w-5 h-5" /> Tambah Layanan
+                        </button>
+                      )}
                     </div>
                   </section>
 

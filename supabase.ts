@@ -1,12 +1,12 @@
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7';
+import { createClient } from '@supabase/supabase-js';
 
 /**
  * Supabase configuration.
  * Configured with provided Laundry Ibu Tini project credentials.
  */
-const SUPABASE_URL = process.env.SUPABASE_URL || (window as any).env?.SUPABASE_URL || 'https://ucwypsrtmfkxgeutodkp.supabase.co';
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || (window as any).env?.SUPABASE_ANON_KEY || 'sb_publishable_Ya4y19ek7sLb3OXXVTV8TA_zdJI4B52';
+const SUPABASE_URL = import.meta.env?.VITE_SUPABASE_URL || (window as any).env?.SUPABASE_URL || 'https://ucwypsrtmfkxgeutodkp.supabase.co';
+const SUPABASE_ANON_KEY = import.meta.env?.VITE_SUPABASE_ANON_KEY || (window as any).env?.SUPABASE_ANON_KEY || 'sb_publishable_Ya4y19ek7sLb3OXXVTV8TA_zdJI4B52';
 
 // Create a singleton client instance
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
