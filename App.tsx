@@ -101,6 +101,7 @@ import {
   upsertCustomerToSupabase
 } from './utils';
 import { supabase, isSupabaseConfigured } from './supabase';
+import { CalendarView } from './CalendarView';
 
 const ADMIN_PIN = "2115";
 const ADMIN_USERNAME = "Eneng_21";
@@ -408,7 +409,7 @@ export default function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
   const [showWelcome, setShowWelcome] = useState(false);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'add' | 'reports' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'add' | 'reports' | 'calendar' | 'settings'>('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'Semua' | OrderStatus>('Semua');
   const [serviceFilter, setServiceFilter] = useState<ServiceType | 'Semua'>('Semua');
@@ -1028,7 +1029,7 @@ export default function App() {
              <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-blue-500/20">
                 <WashingMachine className="w-7 h-7" />
              </div>
-             <span className="font-black text-2xl tracking-tighter">IBU TINI</span>
+             <span className="font-black text-2xl tracking-tighter">LAUNDRY IBU TINI</span>
           </div>
           
           <nav className="flex-1 space-y-5 relative z-10">
@@ -1037,6 +1038,7 @@ export default function App() {
                 <SidebarLink icon={LayoutDashboard} label="Dashboard" active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} />
                 <SidebarLink icon={ClipboardList} label="Data Pesanan" active={activeTab === 'orders'} onClick={() => setActiveTab('orders')} />
                 <SidebarLink icon={PlusCircle} label="Tambah Order" active={activeTab === 'add'} onClick={() => setActiveTab('add')} />
+                <SidebarLink icon={CalendarDays} label="Kalender" active={activeTab === 'calendar'} onClick={() => setActiveTab('calendar')} />
                 <SidebarLink icon={BarChart3} label="Laporan" active={activeTab === 'reports'} onClick={() => setActiveTab('reports')} />
                 <SidebarLink icon={Settings} label="Pengaturan" active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} />
               </>
@@ -1071,7 +1073,7 @@ export default function App() {
         <header className="sticky top-0 z-40 bg-white/70 backdrop-blur-2xl border-b border-slate-100 p-6 md:p-10 flex items-center justify-between">
           <div>
             <h2 className="text-2xl md:text-4xl font-black text-slate-900 tracking-tighter">
-              {activeTab === 'dashboard' ? 'Overview' : activeTab === 'reports' ? 'Laporan Keuangan' : activeTab === 'add' ? 'Registrasi Baru' : activeTab === 'settings' ? 'Konfigurasi Sistem' : 'Manajemen Pesanan'}
+              {activeTab === 'dashboard' ? 'Overview' : activeTab === 'reports' ? 'Laporan Keuangan' : activeTab === 'add' ? 'Registrasi Baru' : activeTab === 'settings' ? 'Konfigurasi Sistem' : activeTab === 'calendar' ? 'Kalender Pesanan' : 'Manajemen Pesanan'}
             </h2>
             {role === 'CUSTOMER' && <p className="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] mt-2 flex items-center gap-2"><ZapIcon className="w-3.5 h-3.5 pulse" /> Koneksi Real-time Aktif</p>}
           </div>
@@ -1286,6 +1288,19 @@ export default function App() {
             </div>
           )}
 
+          {activeTab === 'calendar' && (
+            <div className="animate-fade-in">
+              <CalendarView 
+                orders={orders} 
+                onAddOrder={(date) => {
+                  setStartDate(date.toISOString().split('T')[0]);
+                  setActiveTab('add');
+                }}
+                onOrderClick={(order) => setSelectedOrder(order)}
+              />
+            </div>
+          )}
+
           {activeTab === 'settings' && role === 'ADMIN' && (
             <div className="max-w-4xl mx-auto space-y-10 animate-fade-in">
               <Card className="p-10 md:p-14 overflow-hidden relative">
@@ -1445,6 +1460,7 @@ export default function App() {
         <MobileNavItem onClick={() => setActiveTab(role === 'ADMIN' ? 'dashboard' : 'orders')} active={activeTab === 'dashboard'} icon={role === 'ADMIN' ? LayoutDashboard : Activity} label={role === 'ADMIN' ? 'Home' : 'Lacak'} />
         {role === 'ADMIN' && <MobileNavItem onClick={() => setActiveTab('reports')} active={activeTab === 'reports'} icon={BarChart3} label="Laporan" />}
         <MobileNavItem onClick={() => setActiveTab('add')} active={activeTab === 'add'} icon={PlusCircle} label="Tambah" />
+        <MobileNavItem onClick={() => setActiveTab('calendar')} active={activeTab === 'calendar'} icon={CalendarDays} label="Kalender" />
         <MobileNavItem onClick={() => setActiveTab('orders')} active={activeTab === 'orders'} icon={ClipboardList} label="Data" />
         {role === 'ADMIN' && <MobileNavItem onClick={() => setActiveTab('settings')} active={activeTab === 'settings'} icon={Settings} label="Setting" />}
       </div>
@@ -1670,6 +1686,7 @@ function OrderForm({ role, prefilledPhone, prefilledProfile, onAdd, services }: 
       ...formData,
       totalPrice: total,
       status: 'Baru',
+      paymentStatus: 'Belum Bayar',
       createdAt: new Date().toISOString(),
       estimatedFinishDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
     };

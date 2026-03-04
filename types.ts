@@ -34,6 +34,7 @@ export interface Order {
   estimatedFinishDate: string;
   specialRequest?: string;
   deliveryMethod: 'Antar/Jemput' | 'Ambil Sendiri';
+  paymentStatus: 'Belum Bayar' | 'Lunas';
 }
 
 export type Role = 'ADMIN' | 'CUSTOMER';
